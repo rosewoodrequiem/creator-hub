@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useScheduleStore } from "./store/useScheduleStore";
+import { useEffect } from "react";
+import { useConfigStore } from "./store/StoreContext";
 import type { DayKey } from "./types";
 import WeekPicker from "./editor/components/WeekPicker";
 import SchedulePreview from "./canvas/SchedulePreview";
@@ -11,12 +11,9 @@ import * as htmlToImage from "html-to-image";
 import { SHORTS } from "./constants";
 
 export default function App() {
-  const week = useScheduleStore((s) => s.week);
-  const updateDay = useScheduleStore((s) => s.updateDay);
-  const setDay = useScheduleStore((s) => s.setDay);
-  const setHeroUrl = useScheduleStore((s) => s.setHeroUrl);
-
-  const [exportScale, setExportScale] = useState(2);
+  const store = useConfigStore();
+  const { week, updateDay, setDay, setHeroUrl, exportScale, setExportScale } =
+    store;
 
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
