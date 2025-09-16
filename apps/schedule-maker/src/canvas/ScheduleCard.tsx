@@ -1,13 +1,21 @@
-import React from "react"
+import React from "react";
+
+export type ScheduleData = {
+  title: string;
+  dateRange: string;
+  rows: { time: string; event: string }[];
+  size: { w: number; h: number };
+  theme: { bg: string; card: string; accent: string };
+};
 
 type Props = {
-  data: ScheduleData
+  data: ScheduleData;
   /** Attach this ref to the outermost capture node */
-  captureRef?: React.Ref<HTMLDivElement>
-}
+  captureRef?: React.Ref<HTMLDivElement>;
+};
 
 export default function ScheduleCard({ data, captureRef }: Props) {
-  const { w, h } = data.size
+  const { w, h } = data.size;
 
   return (
     <div
@@ -67,5 +75,5 @@ export default function ScheduleCard({ data, captureRef }: Props) {
         Made with Schedule Maker
       </div>
     </div>
-  )
+  );
 }
