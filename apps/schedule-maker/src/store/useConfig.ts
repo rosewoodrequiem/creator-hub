@@ -86,6 +86,9 @@ export const useConfig = create<ConfigState>()(
       name: "schedule-maker-config",
       storage: createJSONStorage(() => storage),
       version: 1,
+      onRehydrateStorage: (state) => {
+        console.log("Rehydrating store", state)
+      },
     },
   ),
 )

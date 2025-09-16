@@ -25,6 +25,7 @@ export class HybridStorage implements StateStorage {
   }
 
   async getItem(name: string): Promise<string | null> {
+    console.log("Getting item", name)
     if (name !== CONFIG_KEY) {
       console.warn("Unexpected storage key:", name)
       return null
@@ -35,6 +36,7 @@ export class HybridStorage implements StateStorage {
 
     try {
       const config = JSON.parse(rawConfig)
+      console.log("Loaded config", config)
 
       // Load images from IndexedDB
       const loadImage = async (url: string | undefined) => {
@@ -48,6 +50,7 @@ export class HybridStorage implements StateStorage {
 
       // Load hero image
       config.heroUrl = await loadImage(config.heroUrl)
+      console.log("Loaded hero image", config.heroUrl)
 
       // Load day images
       for (const [key, day] of Object.entries(config.week.days)) {
@@ -57,7 +60,9 @@ export class HybridStorage implements StateStorage {
         config.week.days[key] = updatedDay
       }
 
-      return JSON.stringify(config)
+      console.log("Final loaded config", config)
+
+      return config
     } catch (error) {
       console.error("Error loading config:", error)
       return rawConfig
@@ -65,6 +70,7 @@ export class HybridStorage implements StateStorage {
   }
 
   async setItem(name: string, value: string): Promise<void> {
+    console.log("Setting item", name, value)
     if (name !== CONFIG_KEY) {
       console.warn("Unexpected storage key:", name)
       return

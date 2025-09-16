@@ -21,6 +21,7 @@ export default function App() {
   const setDay = useScheduleStore((s) => s.setDay)
   const updateWeek = useScheduleStore((s) => s.updateWeek)
   const setStoreHeroUrl = useScheduleStore((s) => s.setHeroUrl)
+  console.log("App render", { week, heroUrl })
 
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
