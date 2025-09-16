@@ -1,9 +1,9 @@
 import type { StateStorage } from "zustand/middleware"
 import Dexie from "dexie"
-import type { ConfigState } from "./useConfigStore"
+import type { ConfigState } from "./useConfig"
 import type { DayPlan } from "../types"
 
-const DB_NAME = "schedule-maker-images"
+const DB_NAME = "schedule-maker"
 const CONFIG_KEY = "schedule-maker-config"
 
 class ImageDB extends Dexie {
@@ -38,9 +38,11 @@ export class HybridStorage implements StateStorage {
 
       // Load images from IndexedDB
       const loadImage = async (url: string | undefined) => {
-        if (!url?.startsWith("blob:") && !url?.startsWith("data:")) return url
-        const id = url.startsWith("blob:") ? url.slice(5) : url
+        if (!url?.startsWith("id:") && !url?.startsWith("data:")) return url
+        const id = url.startsWith("id:") ? url.slice(3) : url
+        console.log("Loading image", url, "ID", id)
         const image = await this.db.images.get(id)
+        console.log("Loaded image", image?.data)
         return image?.data
       }
 
@@ -69,14 +71,16 @@ export class HybridStorage implements StateStorage {
     }
 
     try {
-      const config = JSON.parse(value)
+      const config = JSON.parse(value).state
       const newConfig = { ...config }
 
       // Store hero image
+      console.log("Saving hero image", config)
       if (config.heroUrl?.startsWith("data:")) {
         const id = crypto.randomUUID()
+        console.log("Saving hero image", config.heroUrl, id)
         await this.db.images.put({ id, data: config.heroUrl })
-        newConfig.heroUrl = "blob:" + id
+        newConfig.heroUrl = "id:" + id
       }
 
       // Store day images

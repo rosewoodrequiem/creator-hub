@@ -18,6 +18,7 @@ export default function ElegantBlue({
 }) {
   const week = useScheduleStore((s) => s.week)
   const heroUrl = useScheduleStore((s) => s.heroUrl)
+  console.log("ElegantBlue render", { heroUrl })
 
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
@@ -29,6 +30,7 @@ export default function ElegantBlue({
   const heroAuto = enabledKeys.find((k) => week.days[k].graphicUrl) || null
   const hero =
     heroUrl ?? (heroAuto ? week.days[heroAuto].graphicUrl : undefined)
+  console.log("ElegantBlue render", { heroUrl, heroAuto, hero })
 
   return (
     <div className="elegant-blue-theme">

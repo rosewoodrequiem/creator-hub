@@ -1,5 +1,4 @@
 import { useEffect } from "react"
-import { useConfigStore } from "./store/StoreContext"
 import type { DayKey } from "./types"
 import WeekPicker from "./editor/components/WeekPicker"
 import SchedulePreview from "./canvas/SchedulePreview"
@@ -10,12 +9,18 @@ import DayAccordion from "./editor/components/DayAccordion"
 import * as htmlToImage from "html-to-image"
 import { SHORTS } from "./constants"
 import { useScheduleStore } from "./store/useScheduleStore"
+import { useConfig } from "./store/useConfig"
 
 export default function App() {
-  const store = useConfigStore()
-  const { week, updateDay, setDay, setHeroUrl, exportScale, setExportScale } =
-    store
+  const week = useConfig((s) => s.week)
+  const heroUrl = useConfig((s) => s.heroUrl)
+  const exportScale = useConfig((s) => s.exportScale)
+  const setExportScale = useConfig((s) => s.setExportScale)
+  const setHeroUrl = useConfig((s) => s.setHeroUrl)
+  const updateDay = useScheduleStore((s) => s.updateDay)
+  const setDay = useScheduleStore((s) => s.setDay)
   const updateWeek = useScheduleStore((s) => s.updateWeek)
+  const setStoreHeroUrl = useScheduleStore((s) => s.setHeroUrl)
 
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
@@ -54,6 +59,8 @@ export default function App() {
 
   useEffect(() => {
     updateWeek(week)
+    console.log("App useEffect updateWeek", heroUrl)
+    setStoreHeroUrl(heroUrl)
   }, [week, updateWeek])
 
   return (
@@ -97,11 +104,10 @@ export default function App() {
               return (
                 <label
                   key={key}
-                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 select-none ${
-                    enabled
-                      ? "bg-[--color-brand] text-black"
-                      : "bg-white text-black"
-                  } hover:brightness-105`}
+                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 select-none ${enabled
+                    ? "bg-[--color-brand] text-black"
+                    : "bg-white text-black"
+                    } hover:brightness-105`}
                 >
                   <input
                     type="checkbox"
