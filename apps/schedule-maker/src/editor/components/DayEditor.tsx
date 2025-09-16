@@ -1,5 +1,5 @@
-import React from "react";
-import type { DayPlan } from "../../types";
+import React from "react"
+import type { DayPlan } from "../../types"
 
 const TZ_OPTIONS = [
   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -7,15 +7,15 @@ const TZ_OPTIONS = [
   "America/Los_Angeles",
   "Europe/London",
   "UTC",
-];
+]
 
 type Props = {
-  open: boolean;
-  onClose: () => void;
-  plan: DayPlan;
-  onChange: (next: DayPlan) => void;
-  title: string; // e.g., "Edit Tuesday"
-};
+  open: boolean
+  onClose: () => void
+  plan: DayPlan
+  onChange: (next: DayPlan) => void
+  title: string // e.g., "Edit Tuesday"
+}
 
 export default function DayEditor({
   open,
@@ -24,16 +24,16 @@ export default function DayEditor({
   onChange,
   title,
 }: Props) {
-  if (!open) return null;
+  if (!open) return null
 
   function onFile(
     e: React.ChangeEvent<HTMLInputElement>,
     key: "logoUrl" | "graphicUrl",
   ) {
-    const f = e.target.files?.[0];
-    if (!f) return onChange({ ...plan, [key]: undefined });
-    const url = URL.createObjectURL(f);
-    onChange({ ...plan, [key]: url });
+    const f = e.target.files?.[0]
+    if (!f) return onChange({ ...plan, [key]: undefined })
+    const url = URL.createObjectURL(f)
+    onChange({ ...plan, [key]: url })
   }
 
   return (
@@ -144,5 +144,5 @@ export default function DayEditor({
         </div>
       </div>
     </div>
-  );
+  )
 }

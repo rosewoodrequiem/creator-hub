@@ -1,17 +1,17 @@
-import React, { useState } from "react";
+import React, { useState } from "react"
 
 type DayCardProps = {
-  day: string;
-  events: string[];
-};
+  day: string
+  events: string[]
+}
 
 const DayCard: React.FC<DayCardProps> = ({ day, events }) => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(true)
 
   return (
-    <div className="border rounded-md bg-white shadow-sm">
+    <div className="rounded-md border bg-white shadow-sm">
       <div
-        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100"
+        className="flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-100"
         onClick={() => setOpen(!open)}
       >
         <span className="font-semibold">{day}</span>
@@ -22,7 +22,7 @@ const DayCard: React.FC<DayCardProps> = ({ day, events }) => {
           {events.map((event, i) => (
             <div
               key={i}
-              className="text-sm text-gray-700 py-1 border-b last:border-none"
+              className="border-b py-1 text-sm text-gray-700 last:border-none"
             >
               {event}
             </div>
@@ -30,7 +30,7 @@ const DayCard: React.FC<DayCardProps> = ({ day, events }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default DayCard;
+export default DayCard

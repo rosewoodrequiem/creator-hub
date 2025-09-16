@@ -1,16 +1,16 @@
-import React from "react";
-import type { DayPlan, DayKey } from "../../types";
-import { DAY_LABELS, fmtTime, shortMonthDay } from "../../utils/date";
-import Button from "../ui/Button";
-import DayInlineEditor from "./DayInlineEditor";
+import React from "react"
+import type { DayPlan, DayKey } from "../../types"
+import { DAY_LABELS, fmtTime, shortMonthDay } from "../../utils/date"
+import Button from "../ui/Button"
+import DayInlineEditor from "./DayInlineEditor"
 
 type Props = {
-  dayKey: DayKey;
-  date: Date;
-  plan: DayPlan;
-  onChange: (next: DayPlan) => void;
-  onDisable: () => void;
-};
+  dayKey: DayKey
+  date: Date
+  plan: DayPlan
+  onChange: (next: DayPlan) => void
+  onDisable: () => void
+}
 
 export default function DayAccordion({
   dayKey,
@@ -19,11 +19,9 @@ export default function DayAccordion({
   onChange,
   onDisable,
 }: Props) {
-  const [open, setOpen] = React.useState(true);
+  const [open, setOpen] = React.useState(true)
 
-  const when = plan.time
-    ? fmtTime(date, plan.time, plan.timezone)
-    : "Set time…";
+  const when = plan.time ? fmtTime(date, plan.time, plan.timezone) : "Set time…"
 
   return (
     <div className="rounded-2xl border">
@@ -61,5 +59,5 @@ export default function DayAccordion({
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -1,17 +1,17 @@
-import { create } from "zustand";
+import { create } from "zustand"
 
 type RuntimeState = {
-  weekOffset: number;
-  sidebarOpen: boolean;
-  imageCache: Record<string, string>; // Map of image keys to base64 data
+  weekOffset: number
+  sidebarOpen: boolean
+  imageCache: Record<string, string> // Map of image keys to base64 data
 
   // Actions
-  toggleSidebar: () => void;
-  nextWeek: () => void;
-  prevWeek: () => void;
-  cacheImage: (key: string, dataUrl: string) => void;
-  clearImageCache: () => void;
-};
+  toggleSidebar: () => void
+  nextWeek: () => void
+  prevWeek: () => void
+  cacheImage: (key: string, dataUrl: string) => void
+  clearImageCache: () => void
+}
 
 export const useRuntimeStore = create<RuntimeState>((set) => ({
   weekOffset: 0,
@@ -27,4 +27,4 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
       imageCache: { ...s.imageCache, [key]: dataUrl },
     })),
   clearImageCache: () => set({ imageCache: {} }),
-}));
+}))

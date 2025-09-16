@@ -1,34 +1,34 @@
-import { useScheduleStore } from "../../store/useScheduleStore";
-import type { DayKey } from "../../types";
+import { useScheduleStore } from "../../store/useScheduleStore"
+import type { DayKey } from "../../types"
 import {
   DAY_LABELS,
   fmtTime,
   fmtZone,
   shortMonthDay,
   weekDates,
-} from "../../utils/date";
-import NoiseOverlay from "../../canvas/components/NoiseOverlay";
-import { DayCard } from "./DayCard";
-import GlowingBox from "./GlowBox";
+} from "../../utils/date"
+import NoiseOverlay from "../../canvas/components/NoiseOverlay"
+import { DayCard } from "./DayCard"
+import GlowingBox from "./GlowBox"
 
 export default function ElegantBlue({
   captureId = "capture-root",
 }: {
-  captureId?: string;
+  captureId?: string
 }) {
-  const week = useScheduleStore((s) => s.week);
-  const heroUrl = useScheduleStore((s) => s.heroUrl);
+  const week = useScheduleStore((s) => s.week)
+  const heroUrl = useScheduleStore((s) => s.heroUrl)
 
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
       ? ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-      : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+      : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
-  const dates = weekDates(week.weekAnchorDate, week.weekStart);
-  const enabledKeys = dayOrder.filter((k) => week.days[k].enabled);
-  const heroAuto = enabledKeys.find((k) => week.days[k].graphicUrl) || null;
+  const dates = weekDates(week.weekAnchorDate, week.weekStart)
+  const enabledKeys = dayOrder.filter((k) => week.days[k].enabled)
+  const heroAuto = enabledKeys.find((k) => week.days[k].graphicUrl) || null
   const hero =
-    heroUrl ?? (heroAuto ? week.days[heroAuto].graphicUrl : undefined);
+    heroUrl ?? (heroAuto ? week.days[heroAuto].graphicUrl : undefined)
 
   return (
     <div className="elegant-blue-theme">
@@ -67,14 +67,14 @@ export default function ElegantBlue({
             )}
 
             {enabledKeys.map((key) => {
-              const plan = week.days[key];
-              const idx = dayOrder.indexOf(key);
-              const date = dates[idx];
+              const plan = week.days[key]
+              const idx = dayOrder.indexOf(key)
+              const date = dates[idx]
               const when = plan.time
                 ? fmtTime(date, plan.time, plan.timezone)
-                : "Time TBD";
-              const zone = fmtZone(date, plan.timezone);
-              const formattedDate = shortMonthDay(date);
+                : "Time TBD"
+              const zone = fmtZone(date, plan.timezone)
+              const formattedDate = shortMonthDay(date)
               return (
                 <DayCard
                   key={key}
@@ -86,7 +86,7 @@ export default function ElegantBlue({
                   logoUrl={plan.logoUrl}
                   graphicUrl={plan.graphicUrl}
                 />
-              );
+              )
             })}
           </div>
         </div>
@@ -121,5 +121,5 @@ export default function ElegantBlue({
         </div>
       </div>
     </div>
-  );
+  )
 }

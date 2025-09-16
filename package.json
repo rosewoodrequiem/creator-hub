@@ -46,6 +46,7 @@
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
     "jiti": "2.4.2",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
     "jsdom": "~22.1.0",
     "nx": "21.5.3",
     "postcss": "8.4.38",

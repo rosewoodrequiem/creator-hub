@@ -1,9 +1,9 @@
-import React from "react";
-import { useScheduleStore } from "../../store/useScheduleStore";
+import React from "react"
+import { useScheduleStore } from "../../store/useScheduleStore"
 
 export default function TemplatePicker() {
-  const template = useScheduleStore((s) => s.template);
-  const setTemplate = useScheduleStore((s) => s.setTemplate);
+  const template = useScheduleStore((s) => s.template)
+  const setTemplate = useScheduleStore((s) => s.setTemplate)
 
   return (
     <label className="block text-xs">
@@ -17,5 +17,5 @@ export default function TemplatePicker() {
         {/* add more options as you create new previews */}
       </select>
     </label>
-  );
+  )
 }

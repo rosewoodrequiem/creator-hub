@@ -1,20 +1,20 @@
-import React from "react";
-import { useScheduleStore } from "../../store/useScheduleStore";
-import { toISODate, weekDates } from "../../utils/date";
-import Button from "../ui/Button";
+import React from "react"
+import { useScheduleStore } from "../../store/useScheduleStore"
+import { toISODate, weekDates } from "../../utils/date"
+import Button from "../ui/Button"
 
 export default function WeekPicker() {
-  const weekStart = useScheduleStore((s) => s.week.weekStart);
-  const anchorISO = useScheduleStore((s) => s.week.weekAnchorDate);
-  const updateWeek = useScheduleStore((s) => s.updateWeek);
+  const weekStart = useScheduleStore((s) => s.week.weekStart)
+  const anchorISO = useScheduleStore((s) => s.week.weekAnchorDate)
+  const updateWeek = useScheduleStore((s) => s.updateWeek)
 
-  const dates = weekDates(anchorISO, weekStart);
-  const range = `${dates[0].toLocaleDateString()} – ${dates[6].toLocaleDateString()}`;
+  const dates = weekDates(anchorISO, weekStart)
+  const range = `${dates[0].toLocaleDateString()} – ${dates[6].toLocaleDateString()}`
 
   function shiftWeeks(delta: number) {
-    const d = new Date(anchorISO);
-    d.setDate(d.getDate() + delta * 7);
-    updateWeek({ weekAnchorDate: toISODate(d) });
+    const d = new Date(anchorISO)
+    d.setDate(d.getDate() + delta * 7)
+    updateWeek({ weekAnchorDate: toISODate(d) })
   }
 
   return (
@@ -66,5 +66,5 @@ export default function WeekPicker() {
         Week range: {range}
       </div>
     </div>
-  );
+  )
 }

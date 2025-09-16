@@ -1,11 +1,11 @@
 interface DayCardProps {
-  day: string;
-  when: string;
-  date: string;
-  zone: string;
-  gameName: string;
-  graphicUrl?: string;
-  logoUrl?: string;
+  day: string
+  when: string
+  date: string
+  zone: string
+  gameName: string
+  graphicUrl?: string
+  logoUrl?: string
 }
 
 export const DayCard: React.FC<DayCardProps> = ({
@@ -62,5 +62,5 @@ export const DayCard: React.FC<DayCardProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

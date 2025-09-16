@@ -14,5 +14,5 @@ export default function GlowingBox() {
         <div className="relative z-10 text-white">Hello World</div>
       </div>
     </div>
-  );
+  )
 }

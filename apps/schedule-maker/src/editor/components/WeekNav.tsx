@@ -1,8 +1,8 @@
 // components/WeekNav.tsx
-import { useScheduleStore } from "../../store/useScheduleStore";
+import { useScheduleStore } from "../../store/useScheduleStore"
 
 export function WeekNav() {
-  const { nextWeek, prevWeek, weekOffset } = useScheduleStore();
+  const { nextWeek, prevWeek, weekOffset } = useScheduleStore()
 
   return (
     <div className="flex items-center justify-between gap-2 p-2">
@@ -20,5 +20,5 @@ export function WeekNav() {
         Next Week →
       </button>
     </div>
-  );
+  )
 }

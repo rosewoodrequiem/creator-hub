@@ -1,5 +1,5 @@
-import React from "react";
-import DayCard from "./DayCard";
+import React from "react"
+import DayCard from "./DayCard"
 
 const Sidebar = () => {
   const week = [
@@ -8,7 +8,7 @@ const Sidebar = () => {
     { day: "Wednesday", events: ["Workshop"] },
     { day: "Thursday", events: ["Review", "Sync"] },
     { day: "Friday", events: ["Party 🎉"] },
-  ];
+  ]
 
   return (
     <div className="h-full w-64 space-y-3 overflow-y-auto border-r bg-gray-50 p-3">
@@ -16,7 +16,7 @@ const Sidebar = () => {
         <DayCard key={d.day} day={d.day} events={d.events} />
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default Sidebar;
+export default Sidebar

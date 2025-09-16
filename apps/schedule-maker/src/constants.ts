@@ -1,4 +1,4 @@
-import type { DayKey } from "./types";
+import type { DayKey } from "./types"
 
 export const SHORTS: Record<DayKey, string> = {
   sun: "Sun",
@@ -8,4 +8,4 @@ export const SHORTS: Record<DayKey, string> = {
   thu: "Thu",
   fri: "Fri",
   sat: "Sat",
-};
+}
