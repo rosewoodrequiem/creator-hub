@@ -1,4 +1,3 @@
-import { useEffect } from "react"
 import type { DayKey } from "./types"
 import WeekPicker from "./editor/components/WeekPicker"
 import SchedulePreview from "./canvas/SchedulePreview"
@@ -8,7 +7,6 @@ import Button from "./editor/ui/Button"
 import DayAccordion from "./editor/components/DayAccordion"
 import * as htmlToImage from "html-to-image"
 import { SHORTS } from "./constants"
-import { useScheduleStore } from "./store/useScheduleStore"
 import { useConfig } from "./store/useConfig"
 
 export default function App() {
@@ -17,10 +15,8 @@ export default function App() {
   const exportScale = useConfig((s) => s.exportScale)
   const setExportScale = useConfig((s) => s.setExportScale)
   const setHeroUrl = useConfig((s) => s.setHeroUrl)
-  const updateDay = useScheduleStore((s) => s.updateDay)
-  const setDay = useScheduleStore((s) => s.setDay)
-  const updateWeek = useScheduleStore((s) => s.updateWeek)
-  const setStoreHeroUrl = useScheduleStore((s) => s.setHeroUrl)
+  const updateDay = useConfig((s) => s.updateDay)
+  const setDay = useConfig((s) => s.setDay)
   console.log("App render", { week, heroUrl })
 
   const dayOrder: DayKey[] =
@@ -58,11 +54,7 @@ export default function App() {
     }
   }
 
-  useEffect(() => {
-    updateWeek(week)
-    console.log("App useEffect updateWeek", heroUrl)
-    setStoreHeroUrl(heroUrl)
-  }, [week, updateWeek])
+  // No need for useEffect to sync stores anymore since we're using a single store
 
   return (
     <div className="grid h-full md:grid-cols-[460px_1fr]">

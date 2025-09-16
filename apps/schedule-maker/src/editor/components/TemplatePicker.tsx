@@ -1,9 +1,9 @@
 import React from "react"
-import { useScheduleStore } from "../../store/useScheduleStore"
+import { useConfig } from "../../store/useConfig"
 
 export default function TemplatePicker() {
-  const template = useScheduleStore((s) => s.template)
-  const setTemplate = useScheduleStore((s) => s.setTemplate)
+  const template = useConfig((s) => s.template)
+  const setTemplate = useConfig((s) => s.setTemplate)
 
   return (
     <label className="block text-xs">

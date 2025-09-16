@@ -1,4 +1,4 @@
-import { useScheduleStore } from "../../store/useScheduleStore"
+import { useConfig } from "../../store/useConfig"
 import type { DayKey } from "../../types"
 import {
   DAY_LABELS,
@@ -16,8 +16,8 @@ export default function ElegantBlue({
 }: {
   captureId?: string
 }) {
-  const week = useScheduleStore((s) => s.week)
-  const heroUrl = useScheduleStore((s) => s.heroUrl)
+  const week = useConfig((s) => s.week)
+  const heroUrl = useConfig((s) => s.heroUrl)
   console.log("ElegantBlue render", { heroUrl })
 
   const dayOrder: DayKey[] =

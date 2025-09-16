@@ -40,32 +40,63 @@ export class HybridStorage implements StateStorage {
 
       // Load images from IndexedDB
       const loadImage = async (url: string | undefined) => {
-        if (!url?.startsWith("id:") && !url?.startsWith("data:")) return url
-        const id = url.startsWith("id:") ? url.slice(3) : url
+        if (!url) return undefined
+        if (
+          !url.startsWith("id:") &&
+          !url.startsWith("blob:") &&
+          !url.startsWith("data:")
+        )
+          return url
+        const id = url.startsWith("id:")
+          ? url.slice(3)
+          : url.startsWith("blob:")
+            ? url.slice(5)
+            : url
         console.log("Loading image", url, "ID", id)
         const image = await this.db.images.get(id)
-        console.log("Loaded image", image?.data)
+        console.log("Loaded image", image?.data ? "data:..." : "undefined")
         return image?.data
       }
 
-      // Load hero image
-      config.heroUrl = await loadImage(config.heroUrl)
+      // Load all images in parallel
+      const [heroImage, ...dayImages] = await Promise.all([
+        loadImage(config.heroUrl),
+        ...Object.entries(config.week.days).flatMap(([_, day]) => [
+          loadImage((day as DayPlan).logoUrl),
+          loadImage((day as DayPlan).graphicUrl),
+        ]),
+      ])
+
+      // Update config with loaded images
+      config.heroUrl = heroImage
       console.log("Loaded hero image", config.heroUrl)
 
-      // Load day images
+      let dayImageIndex = 0
       for (const [key, day] of Object.entries(config.week.days)) {
         const updatedDay = day as DayPlan
-        updatedDay.logoUrl = await loadImage(updatedDay.logoUrl)
-        updatedDay.graphicUrl = await loadImage(updatedDay.graphicUrl)
+        updatedDay.logoUrl = dayImages[dayImageIndex++]
+        updatedDay.graphicUrl = dayImages[dayImageIndex++]
         config.week.days[key] = updatedDay
       }
 
-      console.log("Final loaded config", config)
+      console.log("Final loaded config", {
+        hasHeroUrl: !!config.heroUrl,
+        heroUrlType: typeof config.heroUrl,
+        heroUrlStart: config.heroUrl?.substring(0, 20),
+      })
 
-      return config
+      const finalConfig = JSON.stringify(config)
+      console.log("Returning config string length:", finalConfig.length)
+      return finalConfig
     } catch (error) {
       console.error("Error loading config:", error)
-      return rawConfig
+      // Try to parse and return the config even if image loading fails
+      try {
+        return JSON.stringify(JSON.parse(rawConfig))
+      } catch (parseError) {
+        console.error("Error parsing raw config:", parseError)
+        return null
+      }
     }
   }
 
@@ -77,16 +108,39 @@ export class HybridStorage implements StateStorage {
     }
 
     try {
-      const config = JSON.parse(value).state
+      const parsed = JSON.parse(value)
+      const config = parsed.state || parsed
+      console.log("Parsed config to save:", {
+        hasHeroUrl: !!config.heroUrl,
+        heroUrlType: typeof config.heroUrl,
+        heroUrlStart: config.heroUrl?.substring(0, 20),
+      })
       const newConfig = { ...config }
 
-      // Store hero image
-      console.log("Saving hero image", config)
+      // Handle hero image
+      const oldState = localStorage.getItem(name)
+      const oldConfig = oldState ? JSON.parse(oldState) : null
+      const oldHeroUrl = oldConfig?.heroUrl
+
       if (config.heroUrl?.startsWith("data:")) {
+        // Delete old hero image if it exists
+        if (oldHeroUrl?.startsWith("id:")) {
+          const oldId = oldHeroUrl.slice(3)
+          console.log("Deleting old hero image", oldId)
+          await this.db.images.delete(oldId)
+        }
+
+        // Store new hero image
         const id = crypto.randomUUID()
-        console.log("Saving hero image", config.heroUrl, id)
+        console.log("Saving new hero image with id", id)
         await this.db.images.put({ id, data: config.heroUrl })
         newConfig.heroUrl = "id:" + id
+      } else if (!config.heroUrl && oldHeroUrl?.startsWith("id:")) {
+        // If hero image was removed, delete it from DB
+        const oldId = oldHeroUrl.slice(3)
+        console.log("Deleting removed hero image", oldId)
+        await this.db.images.delete(oldId)
+        newConfig.heroUrl = undefined
       }
 
       // Store day images
@@ -97,13 +151,13 @@ export class HybridStorage implements StateStorage {
         if (currentDay.logoUrl?.startsWith("data:")) {
           const id = crypto.randomUUID()
           await this.db.images.put({ id, data: currentDay.logoUrl })
-          newDay.logoUrl = "blob:" + id
+          newDay.logoUrl = "id:" + id
         }
 
         if (currentDay.graphicUrl?.startsWith("data:")) {
           const id = crypto.randomUUID()
           await this.db.images.put({ id, data: currentDay.graphicUrl })
-          newDay.graphicUrl = "blob:" + id
+          newDay.graphicUrl = "id:" + id
         }
 
         newConfig.week.days[key] = newDay

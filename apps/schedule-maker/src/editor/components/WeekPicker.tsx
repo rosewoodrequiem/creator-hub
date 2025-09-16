@@ -1,12 +1,12 @@
 import React from "react"
-import { useScheduleStore } from "../../store/useScheduleStore"
+import { useConfig } from "../../store/useConfig"
 import { toISODate, weekDates } from "../../utils/date"
 import Button from "../ui/Button"
 
 export default function WeekPicker() {
-  const weekStart = useScheduleStore((s) => s.week.weekStart)
-  const anchorISO = useScheduleStore((s) => s.week.weekAnchorDate)
-  const updateWeek = useScheduleStore((s) => s.updateWeek)
+  const weekStart = useConfig((s) => s.week.weekStart)
+  const anchorISO = useConfig((s) => s.week.weekAnchorDate)
+  const updateWeek = useConfig((s) => s.updateWeek)
 
   const dates = weekDates(anchorISO, weekStart)
   const range = `${dates[0].toLocaleDateString()} – ${dates[6].toLocaleDateString()}`
