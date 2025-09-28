@@ -1,0 +1,250 @@
+{
+  "version": "6.0",
+  "nxVersion": "21.5.3",
+  "pathMappings": {},
+  "nxJsonPlugins": [
+    {
+      "name": "@nx/js/typescript",
+      "options": {
+        "typecheck": {
+          "targetName": "typecheck"
+        },
+        "build": {
+          "targetName": "build",
+          "configName": "tsconfig.lib.json",
+          "buildDepsName": "build-deps",
+          "watchDepsName": "watch-deps"
+        }
+      }
+    },
+    {
+      "name": "@nx/react/router-plugin",
+      "options": {
+        "buildTargetName": "build",
+        "devTargetName": "dev",
+        "startTargetName": "start",
+        "watchDepsTargetName": "watch-deps",
+        "buildDepsTargetName": "build-deps",
+        "typecheckTargetName": "typecheck"
+      }
+    },
+    {
+      "name": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    },
+    {
+      "name": "@nx/vite/plugin",
+      "options": {
+        "buildTargetName": "build",
+        "testTargetName": "test",
+        "serveTargetName": "serve",
+        "devTargetName": "dev",
+        "previewTargetName": "preview",
+        "serveStaticTargetName": "serve-static",
+        "typecheckTargetName": "typecheck",
+        "buildDepsTargetName": "build-deps",
+        "watchDepsTargetName": "watch-deps"
+      }
+    },
+    {
+      "name": "@nx/playwright/plugin",
+      "options": {
+        "targetName": "e2e"
+      }
+    }
+  ],
+  "fileMap": {
+    "nonProjectFiles": [
+      {
+        "file": ".github/workflows/ci.yml",
+        "hash": "747817022128932451"
+      },
+      {
+        "file": ".prettierignore",
+        "hash": "14688272390704683536"
+      },
+      {
+        "file": ".gitignore",
+        "hash": "6746974787570063356"
+      },
+      {
+        "file": "eslint.config.mjs",
+        "hash": "8944620160701465"
+      },
+      {
+        "file": ".vscode/extensions.json",
+        "hash": "13417776046909105611"
+      },
+      {
+        "file": "packages/.gitkeep",
+        "hash": "3244421341483603138"
+      },
+      {
+        "file": "tsconfig.json",
+        "hash": "1379983966652230747"
+      },
+      {
+        "file": "pnpm-lock.yaml",
+        "hash": "14898015764493126524"
+      },
+      {
+        "file": "package.json",
+        "hash": "14107184555815542654"
+      },
+      {
+        "file": "nx.json",
+        "hash": "882077303700399982"
+      },
+      {
+        "file": "package-lock.json",
+        "hash": "1431199502889796096"
+      },
+      {
+        "file": "tsconfig.base.json",
+        "hash": "3637751908169001377"
+      },
+      {
+        "file": "vitest.workspace.ts",
+        "hash": "4665328684042819579"
+      },
+      {
+        "file": "README.md",
+        "hash": "6542695578473567955"
+      },
+      {
+        "file": ".prettierrc",
+        "hash": "16267754514737964994"
+      }
+    ],
+    "projectFileMap": {
+      "schedule-maker-e2e": [
+        {
+          "file": "apps/schedule-maker-e2e/eslint.config.mjs",
+          "hash": "1172734138943286526",
+          "deps": [
+            "npm:eslint-plugin-playwright"
+          ]
+        },
+        {
+          "file": "apps/schedule-maker-e2e/playwright.config.ts",
+          "hash": "2722465999730115539",
+          "deps": [
+            "npm:@playwright/test",
+            "npm:@nx/playwright",
+            "npm:@nx/devkit"
+          ]
+        },
+        {
+          "file": "apps/schedule-maker-e2e/project.json",
+          "hash": "405300788570543410"
+        },
+        {
+          "file": "apps/schedule-maker-e2e/src/example.spec.ts",
+          "hash": "16019101014373124625",
+          "deps": [
+            "npm:@playwright/test"
+          ]
+        },
+        {
+          "file": "apps/schedule-maker-e2e/tsconfig.json",
+          "hash": "18107275616570252607"
+        }
+      ],
+      "schedule-maker": [
+        {
+          "file": "apps/schedule-maker/README.md",
+          "hash": "11415558854060082855"
+        },
+        {
+          "file": "apps/schedule-maker/eslint.config.mjs",
+          "hash": "8789163670399984295",
+          "deps": [
+            "npm:@nx/eslint-plugin"
+          ]
+        },
+        {
+          "file": "apps/schedule-maker/index.html",
+          "hash": "1610389087561414976"
+        },
+        {
+          "file": "apps/schedule-maker/postcss.config.js",
+          "hash": "5063587510073735066"
+        },
+        {
+          "file": "apps/schedule-maker/prettier.config.js",
+          "hash": "17417363561447419519"
+        },
+        {
+          "file": "apps/schedule-maker/project.json",
+          "hash": "11588562809861871971"
+        },
+        {
+          "file": "apps/schedule-maker/public/favicon.ico",
+          "hash": "9303420814833116677"
+        },
+        {
+          "file": "apps/schedule-maker/src/app/app.spec.tsx",
+          "hash": "12609069677149038077",
+          "deps": [
+            "npm:@testing-library/react"
+          ]
+        },
+        {
+          "file": "apps/schedule-maker/src/app/app.tsx",
+          "hash": "6228647495129128025"
+        },
+        {
+          "file": "apps/schedule-maker/src/app/nx-welcome.tsx",
+          "hash": "14708174282304233720"
+        },
+        {
+          "file": "apps/schedule-maker/src/assets/.gitkeep",
+          "hash": "3244421341483603138"
+        },
+        {
+          "file": "apps/schedule-maker/src/main.tsx",
+          "hash": "6013565506688027592",
+          "deps": [
+            "npm:react",
+            "npm:react-dom"
+          ]
+        },
+        {
+          "file": "apps/schedule-maker/src/styles.css",
+          "hash": "9540575453073076294"
+        },
+        {
+          "file": "apps/schedule-maker/tailwind.config.js",
+          "hash": "5973408550312614548"
+        },
+        {
+          "file": "apps/schedule-maker/tsconfig.app.json",
+          "hash": "17915403376949929233"
+        },
+        {
+          "file": "apps/schedule-maker/tsconfig.json",
+          "hash": "2365188958523842680"
+        },
+        {
+          "file": "apps/schedule-maker/tsconfig.node.json",
+          "hash": "12526670948656573966"
+        },
+        {
+          "file": "apps/schedule-maker/tsconfig.spec.json",
+          "hash": "2374680567064402239"
+        },
+        {
+          "file": "apps/schedule-maker/vite.config.ts",
+          "hash": "13144531941992273019",
+          "deps": [
+            "npm:vite",
+            "npm:@vitejs/plugin-react"
+          ]
+        }
+      ]
+    }
+  },
+  "externalNodesHash": "11302511471237485166"
+}

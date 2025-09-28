@@ -1,0 +1,10 @@
+{
+  "name": "schedule-maker-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/schedule-maker-e2e/src",
+  "tags": [],
+  "implicitDependencies": ["schedule-maker"],
+  "// targets": "to see all targets run: nx show project schedule-maker-e2e --web",
+  "targets": {}
+}
