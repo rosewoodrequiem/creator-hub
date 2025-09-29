@@ -2,7 +2,9 @@
   "name": "@creator-hub/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "sm:start": "nx serve schedule-maker"
+  },
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.8.0",
