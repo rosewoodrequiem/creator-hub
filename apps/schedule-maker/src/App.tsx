@@ -8,8 +8,9 @@ import DayAccordion from "./editor/components/DayAccordion"
 import * as htmlToImage from "html-to-image"
 import { SHORTS } from "./constants"
 import { useConfig } from "./store/useConfig"
+import { useEffect, useState } from "react"
 
-export default function App() {
+function App() {
   const week = useConfig((s) => s.week)
   const heroUrl = useConfig((s) => s.heroUrl)
   const exportScale = useConfig((s) => s.exportScale)
@@ -17,7 +18,14 @@ export default function App() {
   const setHeroUrl = useConfig((s) => s.setHeroUrl)
   const updateDay = useConfig((s) => s.updateDay)
   const setDay = useConfig((s) => s.setDay)
-  console.log("App render", { week, heroUrl })
+  const setTest = useConfig((s) => s.setTest)
+  const test = useConfig((s) => s.test);
+
+  useEffect(() => {
+    setTest("SETTING NEW TEST VALUE 2")
+  }, [])
+  console.log("App render", { week, heroUrl, test })
+
 
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
@@ -202,4 +210,35 @@ export default function App() {
       </main>
     </div>
   )
+}
+
+export default () => {
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    // Note: This is just in case you want to take into account manual rehydration.
+    // You can remove the following line if you don't need it.
+    const unsubHydrate = useConfig.persist.onHydrate(() => setHydrated(false))
+
+    const unsubFinishHydration = useConfig.persist.onFinishHydration(() => setHydrated(true))
+
+    setHydrated(useConfig.persist.hasHydrated())
+
+    return () => {
+      unsubHydrate()
+      unsubFinishHydration()
+    }
+  }, [])
+
+  if (!hydrated) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="animate-pulse rounded bg-gray-200 p-4 text-gray-400">
+          Loading…
+        </div>
+      </div>
+    )
+  }
+
+  return <App />
 }
