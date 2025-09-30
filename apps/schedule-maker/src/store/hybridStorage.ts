@@ -1,10 +1,9 @@
 import { StateStorage } from "zustand/middleware"
-import Dexie from "dexie"
 import { isPlainObject } from "lodash"
 import { ConfigState } from "./useConfig.types"
 import { deepMapStringsAsync, deepForEachString } from "../utils/object"
+import { ScheduleMakerDB } from "./scheduleMakerDB"
 
-const DB_NAME = "schedule-maker"
 const CONFIG_KEY = "schedule-maker-config"
 
 type PersistEnvelope = {
@@ -12,25 +11,18 @@ type PersistEnvelope = {
   version: number
 }
 
-class ImageDB extends Dexie {
-  images!: Dexie.Table<{ id: string; data: string }, string>
-  constructor() {
-    super(DB_NAME)
-    this.version(1).stores({ images: "id" })
-  }
-}
-
 const isEnvelope = (v: unknown): v is PersistEnvelope =>
   isPlainObject(v) && "state" in (v as any) && "version" in (v as any)
 
 export class HybridStorage implements StateStorage {
-  private db = new ImageDB()
+  private db = new ScheduleMakerDB()
 
   private async loadImage(idOrUrl?: string): Promise<string | undefined> {
     if (!idOrUrl || !idOrUrl.startsWith("id:")) return idOrUrl
     const id = idOrUrl.slice(3)
-    const image = await this.db.images.get(id)
-    return image?.data
+    if (!id) return undefined
+    const row = await this.db.images.get(id)
+    return row?.data
   }
 
   async getItem(name: string): Promise<string | null> {
@@ -48,16 +40,26 @@ export class HybridStorage implements StateStorage {
         ? parsed
         : ({ state: parsed as ConfigState, version: 1 } as PersistEnvelope)
 
-      // Replace any "id:<uuid>" strings with data URLs throughout state
+      // Cache IDB reads within this pass (avoid duplicate gets)
+      const idReadCache = new Map<string, string | undefined>()
+
       envelope.state = await deepMapStringsAsync(envelope.state, async (s) => {
-        if (s.startsWith("id:")) return (await this.loadImage(s)) ?? s
-        return s // pass through http(s), blob:, data:, etc.
+        if (!s.startsWith("id:")) return s
+        const id = s.slice(3)
+        if (!id) return s
+        if (idReadCache.has(id)) return idReadCache.get(id) ?? s
+        const data = await this.loadImage(s)
+        idReadCache.set(id, data)
+        return data ?? s // keep "id:" if missing so references aren't lost
       })
+
+      // Ensure version is numeric
+      if (typeof envelope.version !== "number") envelope.version = 1
 
       return JSON.stringify(envelope)
     } catch (e) {
       console.error("HybridStorage.getItem parse error:", e)
-      return raw // fallback
+      return raw // fallback—let persist try
     }
   }
 
@@ -67,7 +69,7 @@ export class HybridStorage implements StateStorage {
       return
     }
 
-    // Parse the new envelope
+    // Parse new envelope
     let newEnv: PersistEnvelope
     try {
       const parsed = JSON.parse(value)
@@ -80,7 +82,7 @@ export class HybridStorage implements StateStorage {
       return
     }
 
-    // Parse the previous envelope (to discover stale ids)
+    // Parse old envelope (to find stale ids)
     let oldEnv: PersistEnvelope | null = null
     const oldRaw = localStorage.getItem(name)
     if (oldRaw) {
@@ -94,31 +96,52 @@ export class HybridStorage implements StateStorage {
       }
     }
 
-    // Collect old ids to potentially clean up
+    // Collect all old IDs
     const oldIds = new Set<string>()
     if (oldEnv?.state) {
       deepForEachString(oldEnv.state, (s) => {
-        if (s.startsWith("id:")) oldIds.add(s.slice(3))
+        if (s.startsWith("id:")) {
+          const id = s.slice(3)
+          if (id) oldIds.add(id)
+        }
       })
     }
 
-    // Convert any data: URLs in the new state into id:<uuid>, tracking kept ids
+    // Deduplicate data: writes within this call
     const keptIds = new Set<string>()
+    const dataUrlToId = new Map<string, string>() // data:... -> id
+    const makeId = () =>
+      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random()}`
+
     const nextState = await deepMapStringsAsync(newEnv.state, async (s) => {
       if (s.startsWith("data:")) {
-        const id = crypto.randomUUID()
-        await this.db.images.put({ id, data: s })
+        // Reuse existing id if this exact data URL already seen in this save
+        let id = dataUrlToId.get(s)
+        if (!id) {
+          id = makeId()
+          try {
+            await this.db.images.put({ id, data: s })
+          } catch (err) {
+            console.warn("IDB put failed; leaving data URL inline", err)
+            return s // keep data: inline if quota/IDB error
+          }
+          dataUrlToId.set(s, id)
+        }
         keptIds.add(id)
         return "id:" + id
       }
+
       if (s.startsWith("id:")) {
-        keptIds.add(s.slice(3))
+        const id = s.slice(3)
+        if (id) keptIds.add(id)
         return s
       }
-      return s // passthrough
+
+      // http(s), blob:, other strings — passthrough
+      return s
     })
 
-    // Delete any old ids that are no longer referenced
+    // Remove stale IDs not referenced anymore
     for (const id of oldIds) {
       if (!keptIds.has(id)) {
         try {
@@ -131,7 +154,7 @@ export class HybridStorage implements StateStorage {
 
     const finalStr = JSON.stringify({
       state: nextState,
-      version: newEnv.version ?? 1,
+      version: typeof newEnv.version === "number" ? newEnv.version : 1,
     })
     localStorage.setItem(name, finalStr)
   }
@@ -152,7 +175,10 @@ export class HybridStorage implements StateStorage {
 
         const ids = new Set<string>()
         deepForEachString(env.state, (s) => {
-          if (s.startsWith("id:")) ids.add(s.slice(3))
+          if (s.startsWith("id:")) {
+            const id = s.slice(3)
+            if (id) ids.add(id)
+          }
         })
         ids.forEach((id) => this.db.images.delete(id))
       }
