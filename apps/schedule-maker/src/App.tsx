@@ -18,13 +18,6 @@ function App() {
   const setHeroUrl = useConfig((s) => s.setHeroUrl)
   const updateDay = useConfig((s) => s.updateDay)
   const setDay = useConfig((s) => s.setDay)
-  const setTest = useConfig((s) => s.setTest)
-  const test = useConfig((s) => s.test);
-
-  useEffect(() => {
-    setTest("SETTING NEW TEST VALUE 2")
-  }, [])
-  console.log("App render", { week, heroUrl, test })
 
 
   const dayOrder: DayKey[] =

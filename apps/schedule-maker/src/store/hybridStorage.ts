@@ -1,227 +1,165 @@
-import type { StateStorage } from "zustand/middleware";
-import Dexie from "dexie";
-import type { ConfigState } from "./useConfig";
-import type { DayPlan } from "../types";
+import { StateStorage } from "zustand/middleware"
+import Dexie from "dexie"
+import { isPlainObject } from "lodash"
+import { ConfigState } from "./useConfig.types"
+import { deepMapStringsAsync, deepForEachString } from "../utils/object"
 
-const DB_NAME = "schedule-maker";
-const CONFIG_KEY = "schedule-maker-config";
+const DB_NAME = "schedule-maker"
+const CONFIG_KEY = "schedule-maker-config"
 
-// The persisted envelope that zustand/persist expects when using createJSONStorage
 type PersistEnvelope = {
-  state: ConfigState;
-  version: number;
-};
+  state: ConfigState
+  version: number
+}
 
 class ImageDB extends Dexie {
-  images!: Dexie.Table<{ id: string; data: string }, string>;
+  images!: Dexie.Table<{ id: string; data: string }, string>
   constructor() {
-    super(DB_NAME);
-    this.version(1).stores({ images: "id" });
+    super(DB_NAME)
+    this.version(1).stores({ images: "id" })
   }
 }
 
+const isEnvelope = (v: unknown): v is PersistEnvelope =>
+  isPlainObject(v) && "state" in (v as any) && "version" in (v as any)
+
 export class HybridStorage implements StateStorage {
-  private db: ImageDB;
+  private db = new ImageDB()
 
-  constructor() {
-    this.db = new ImageDB();
-  }
-
-  // ---------- helpers ----------
   private async loadImage(idOrUrl?: string): Promise<string | undefined> {
-    if (!idOrUrl) return undefined;
-
-    // Pass through normal URLs and data URLs
-    if (!idOrUrl.startsWith("id:")) return idOrUrl;
-
-    const id = idOrUrl.slice(3);
-    const image = await this.db.images.get(id);
-    return image?.data; // return a data URL (or undefined)
+    if (!idOrUrl || !idOrUrl.startsWith("id:")) return idOrUrl
+    const id = idOrUrl.slice(3)
+    const image = await this.db.images.get(id)
+    return image?.data
   }
 
-  private async saveImageMaybe(
-    oldIdRef: string | undefined,
-    maybeDataUrl?: string,
-  ) {
-    // Returns the *stored reference* that should be kept in state (e.g., "id:<uuid>" or undefined)
-    // Only store when we truly have a data URL
-    if (!maybeDataUrl) {
-      // If we had an old id: remove it
-      if (oldIdRef?.startsWith("id:")) {
-        const oldId = oldIdRef.slice(3);
-        await this.db.images.delete(oldId);
-      }
-      return undefined;
-    }
-
-    if (!maybeDataUrl.startsWith("data:")) {
-      // External URL or blob: just keep as-is (do NOT try to stash blob: in IDB with the blob URL as key)
-      return maybeDataUrl;
-    }
-
-    // New data URL — save and return id: reference
-    // Delete prior id if we’re replacing
-    if (oldIdRef?.startsWith("id:")) {
-      const oldId = oldIdRef.slice(3);
-      await this.db.images.delete(oldId);
-    }
-
-    const id = crypto.randomUUID();
-    await this.db.images.put({ id, data: maybeDataUrl });
-    return "id:" + id;
-  }
-
-  // ---------- StateStorage impl ----------
   async getItem(name: string): Promise<string | null> {
     if (name !== CONFIG_KEY) {
-      console.warn("Unexpected storage key:", name);
-      return null;
+      console.warn("Unexpected storage key:", name)
+      return null
     }
 
-    const raw = localStorage.getItem(name);
-    if (!raw) return null;
+    const raw = localStorage.getItem(name)
+    if (!raw) return null
 
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw)
+      const envelope: PersistEnvelope = isEnvelope(parsed)
+        ? parsed
+        : ({ state: parsed as ConfigState, version: 1 } as PersistEnvelope)
 
-      // MIGRATION: If we find a plain config (no envelope), wrap it
-      const envelope: PersistEnvelope =
-        parsed &&
-        typeof parsed === "object" &&
-        "state" in parsed &&
-        "version" in parsed
-          ? (parsed as PersistEnvelope)
-          : ({ state: parsed as ConfigState, version: 1 } as PersistEnvelope);
+      // Replace any "id:<uuid>" strings with data URLs throughout state
+      envelope.state = await deepMapStringsAsync(envelope.state, async (s) => {
+        if (s.startsWith("id:")) return (await this.loadImage(s)) ?? s
+        return s // pass through http(s), blob:, data:, etc.
+      })
 
-      const cfg = envelope.state;
-
-      // Load hero + day images into data URLs for the in-memory state
-      const heroDataUrl = await this.loadImage(cfg.heroUrl);
-
-      const dayKeys = Object.keys(cfg.week.days);
-      const toLoad: Array<Promise<string | undefined>> = [];
-      for (const k of dayKeys) {
-        const d = cfg.week.days[k as keyof typeof cfg.week.days] as DayPlan;
-        toLoad.push(this.loadImage(d.logoUrl));
-        toLoad.push(this.loadImage(d.graphicUrl));
-      }
-      const loaded = await Promise.all(toLoad);
-
-      let idx = 0;
-      for (const k of dayKeys) {
-        const d = cfg.week.days[k as keyof typeof cfg.week.days] as DayPlan;
-        d.logoUrl = loaded[idx++];
-        d.graphicUrl = loaded[idx++];
-      }
-      cfg.heroUrl = heroDataUrl;
-
-      // Return the proper envelope string for createJSONStorage to parse
-      return JSON.stringify(envelope);
+      return JSON.stringify(envelope)
     } catch (e) {
-      console.error("HybridStorage.getItem parse error:", e);
-      return raw; // last resort; let persist try
+      console.error("HybridStorage.getItem parse error:", e)
+      return raw // fallback
     }
   }
 
   async setItem(name: string, value: string): Promise<void> {
     if (name !== CONFIG_KEY) {
-      console.warn("Unexpected storage key:", name);
-      return;
+      console.warn("Unexpected storage key:", name)
+      return
     }
 
-    // `value` here is the full JSON string of { state, version } because of createJSONStorage
-    let envelope: PersistEnvelope;
+    // Parse the new envelope
+    let newEnv: PersistEnvelope
     try {
-      const parsed = JSON.parse(value);
-
-      // MIGRATION: if persist hands us raw (unlikely), wrap it
-      if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
-        envelope = { state: parsed as ConfigState, version: 1 };
-      } else {
-        envelope = parsed as PersistEnvelope;
-      }
+      const parsed = JSON.parse(value)
+      newEnv = isEnvelope(parsed)
+        ? parsed
+        : ({ state: parsed as ConfigState, version: 1 } as PersistEnvelope)
     } catch (e) {
-      console.error("HybridStorage.setItem parse error; storing raw:", e);
-      localStorage.setItem(name, value);
-      return;
+      console.error("HybridStorage.setItem parse error; storing raw:", e)
+      localStorage.setItem(name, value)
+      return
     }
 
-    const next = envelope.state;
-
-    // Load old envelope (if any) to get old id refs for cleanup/replacement
-    let oldEnvelope: PersistEnvelope | null = null;
-    const oldRaw = localStorage.getItem(name);
+    // Parse the previous envelope (to discover stale ids)
+    let oldEnv: PersistEnvelope | null = null
+    const oldRaw = localStorage.getItem(name)
     if (oldRaw) {
       try {
-        const p = JSON.parse(oldRaw);
-        oldEnvelope =
-          p && typeof p === "object" && "state" in p && "version" in p
-            ? (p as PersistEnvelope)
-            : ({ state: p as ConfigState, version: 1 } as PersistEnvelope);
+        const prev = JSON.parse(oldRaw)
+        oldEnv = isEnvelope(prev)
+          ? prev
+          : ({ state: prev as ConfigState, version: 1 } as PersistEnvelope)
       } catch {
-        oldEnvelope = null;
+        oldEnv = null
       }
     }
-    const old = oldEnvelope?.state;
 
-    // HERO
-    const newHeroRef = await this.saveImageMaybe(old?.heroUrl, next.heroUrl);
-    next.heroUrl = newHeroRef;
-
-    // DAYS
-    for (const [k, day] of Object.entries(next.week.days)) {
-      const oldDay = old?.week.days?.[k] as DayPlan | undefined;
-
-      const newLogoRef = await this.saveImageMaybe(
-        oldDay?.logoUrl,
-        day.logoUrl,
-      );
-      const newGraphicRef = await this.saveImageMaybe(
-        oldDay?.graphicUrl,
-        day.graphicUrl,
-      );
-
-      (day as DayPlan).logoUrl = newLogoRef;
-      (day as DayPlan).graphicUrl = newGraphicRef;
+    // Collect old ids to potentially clean up
+    const oldIds = new Set<string>()
+    if (oldEnv?.state) {
+      deepForEachString(oldEnv.state, (s) => {
+        if (s.startsWith("id:")) oldIds.add(s.slice(3))
+      })
     }
 
-    // Save envelope back (must keep { state, version } intact)
+    // Convert any data: URLs in the new state into id:<uuid>, tracking kept ids
+    const keptIds = new Set<string>()
+    const nextState = await deepMapStringsAsync(newEnv.state, async (s) => {
+      if (s.startsWith("data:")) {
+        const id = crypto.randomUUID()
+        await this.db.images.put({ id, data: s })
+        keptIds.add(id)
+        return "id:" + id
+      }
+      if (s.startsWith("id:")) {
+        keptIds.add(s.slice(3))
+        return s
+      }
+      return s // passthrough
+    })
+
+    // Delete any old ids that are no longer referenced
+    for (const id of oldIds) {
+      if (!keptIds.has(id)) {
+        try {
+          await this.db.images.delete(id)
+        } catch (e) {
+          console.warn("Failed to delete stale image id:", id, e)
+        }
+      }
+    }
+
     const finalStr = JSON.stringify({
-      state: next,
-      version: envelope.version ?? 1,
-    });
-    localStorage.setItem(name, finalStr);
+      state: nextState,
+      version: newEnv.version ?? 1,
+    })
+    localStorage.setItem(name, finalStr)
   }
 
   removeItem(name: string): void {
-    if (name !== CONFIG_KEY) return localStorage.removeItem(name);
-
-    // Optional: clean up any stored images that are referenced by the current record
-    try {
-      const raw = localStorage.getItem(name);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const env: PersistEnvelope =
-          parsed && typeof parsed === "object" && "state" in parsed
-            ? parsed
-            : { state: parsed as ConfigState, version: 1 };
-
-        const ids = new Set<string>();
-        const s = env.state;
-
-        if (s.heroUrl?.startsWith("id:")) ids.add(s.heroUrl.slice(3));
-        for (const day of Object.values(s.week.days) as DayPlan[]) {
-          if (day.logoUrl?.startsWith("id:")) ids.add(day.logoUrl.slice(3));
-          if (day.graphicUrl?.startsWith("id:"))
-            ids.add(day.graphicUrl.slice(3));
-        }
-
-        ids.forEach((id) => this.db.images.delete(id));
-      }
-    } catch (e) {
-      console.warn("Cleanup on removeItem failed (continuing):", e);
+    if (name !== CONFIG_KEY) {
+      localStorage.removeItem(name)
+      return
     }
 
-    localStorage.removeItem(name);
+    try {
+      const raw = localStorage.getItem(name)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        const env: PersistEnvelope = isEnvelope(parsed)
+          ? parsed
+          : ({ state: parsed as ConfigState, version: 1 } as PersistEnvelope)
+
+        const ids = new Set<string>()
+        deepForEachString(env.state, (s) => {
+          if (s.startsWith("id:")) ids.add(s.slice(3))
+        })
+        ids.forEach((id) => this.db.images.delete(id))
+      }
+    } catch (e) {
+      console.warn("Cleanup on removeItem failed (continuing):", e)
+    }
+
+    localStorage.removeItem(name)
   }
 }
