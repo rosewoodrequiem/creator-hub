@@ -2,8 +2,8 @@ import { StateStorage } from "zustand/middleware"
 import { isPlainObject } from "lodash"
 import { ConfigState } from "./useConfig.types"
 import { deepMapStringsAsync, deepForEachString } from "../utils/object"
-import { ScheduleMakerDB } from "./scheduleMakerDB"
-import { ensureSeed } from "../db/ensureSeed" // <- ✅ import your seeder
+import { ScheduleMakerDB } from "./schedule-maker-db/ScheduleMakerDB"
+import { ensureSeed } from "./schedule-maker-db/seed"
 
 const CONFIG_KEY = "schedule-maker-config"
 
