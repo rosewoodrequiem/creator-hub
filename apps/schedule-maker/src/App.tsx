@@ -19,7 +19,6 @@ function App() {
   const updateDay = useConfig((s) => s.updateDay)
   const setDay = useConfig((s) => s.setDay)
 
-
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
       ? ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
@@ -99,8 +98,8 @@ function App() {
                 <label
                   key={key}
                   className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 select-none ${enabled
-                    ? "bg-[--color-brand] text-black"
-                    : "bg-white text-black"
+                      ? "bg-[--color-brand] text-black"
+                      : "bg-white text-black"
                     } hover:brightness-105`}
                 >
                   <input
@@ -213,7 +212,9 @@ export default () => {
     // You can remove the following line if you don't need it.
     const unsubHydrate = useConfig.persist.onHydrate(() => setHydrated(false))
 
-    const unsubFinishHydration = useConfig.persist.onFinishHydration(() => setHydrated(true))
+    const unsubFinishHydration = useConfig.persist.onFinishHydration(() =>
+      setHydrated(true),
+    )
 
     setHydrated(useConfig.persist.hasHydrated())
 
