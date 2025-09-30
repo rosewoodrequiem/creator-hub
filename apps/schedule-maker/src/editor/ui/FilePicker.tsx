@@ -1,11 +1,11 @@
-import React from "react";
+import React from "react"
 
 type Props = {
-  label: string;
-  accept?: string;
-  onFile: (file?: File) => void;
-  buttonText?: string;
-};
+  label: string
+  accept?: string
+  onFile: (file?: File) => void
+  buttonText?: string
+}
 
 export default function FilePicker({
   label,
@@ -13,7 +13,7 @@ export default function FilePicker({
   onFile,
   buttonText = "Select file",
 }: Props) {
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null)
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -23,13 +23,7 @@ export default function FilePicker({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="
-          inline-flex items-center justify-center
-          px-4 py-2 rounded-lg
-          bg-[--color-brand] text-black font-medium text-sm
-          hover:brightness-105 active:brightness-95
-          cursor-pointer transition shadow-sm border border-black/10
-        "
+        className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-black/10 bg-[--color-brand] px-4 py-2 text-sm font-medium text-black shadow-sm transition hover:brightness-105 active:brightness-95"
       >
         {buttonText}
       </button>
@@ -43,5 +37,5 @@ export default function FilePicker({
         onChange={(e) => onFile(e.target.files?.[0] ?? undefined)}
       />
     </div>
-  );
+  )
 }

@@ -1,38 +1,39 @@
-import React, { useState } from "react";
-import { useScheduleStore } from "./store/useScheduleStore";
-import type { DayKey } from "./types";
-import WeekPicker from "./editor/components/WeekPicker";
-import SchedulePreview from "./canvas/SchedulePreview";
-import TemplatePicker from "./editor/components/TemplatePicker";
-import ScaledPreview from "./canvas/ScaledPreview";
-import Button from "./editor/ui/Button";
-import DayAccordion from "./editor/components/DayAccordion";
-import * as htmlToImage from "html-to-image";
-import { SHORTS } from "./constants";
+import type { DayKey } from "./types"
+import WeekPicker from "./editor/components/WeekPicker"
+import SchedulePreview from "./canvas/SchedulePreview"
+import TemplatePicker from "./editor/components/TemplatePicker"
+import ScaledPreview from "./canvas/ScaledPreview"
+import Button from "./editor/ui/Button"
+import DayAccordion from "./editor/components/DayAccordion"
+import * as htmlToImage from "html-to-image"
+import { SHORTS } from "./constants"
+import { useConfig } from "./store/useConfig"
+import { useEffect, useState } from "react"
 
-export default function App() {
-  const week = useScheduleStore((s) => s.week);
-  const updateDay = useScheduleStore((s) => s.updateDay);
-  const setDay = useScheduleStore((s) => s.setDay);
-  const setHeroUrl = useScheduleStore((s) => s.setHeroUrl);
-
-  const [exportScale, setExportScale] = useState(2);
+function App() {
+  const week = useConfig((s) => s.week)
+  const heroUrl = useConfig((s) => s.heroUrl)
+  const exportScale = useConfig((s) => s.exportScale)
+  const setExportScale = useConfig((s) => s.setExportScale)
+  const setHeroUrl = useConfig((s) => s.setHeroUrl)
+  const updateDay = useConfig((s) => s.updateDay)
+  const setDay = useConfig((s) => s.setDay)
 
   const dayOrder: DayKey[] =
     week.weekStart === "sun"
       ? ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-      : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+      : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
   async function handleExport() {
-    const src = document.getElementById("capture-root");
-    if (!src) return;
+    const src = document.getElementById("capture-root")
+    if (!src) return
 
     // Ensure fonts are ready
     // @ts-ignore
-    if (document.fonts?.ready) await document.fonts.ready;
+    if (document.fonts?.ready) await document.fonts.ready
 
     try {
-      const pixelRatio = Math.max(window.devicePixelRatio || 1, 2);
+      const pixelRatio = Math.max(window.devicePixelRatio || 1, 2)
       const dataUrl = await htmlToImage.toPng(src, {
         pixelRatio: Math.min(4, pixelRatio * 2), // 3–4 looks great
         cacheBust: true,
@@ -41,17 +42,19 @@ export default function App() {
         // filter: (node) => !node.classList?.contains('no-export'),
         // You can also override styles for export only:
         // style: { imageRendering: "auto" },
-      });
+      })
 
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = "schedule.png";
-      a.click();
+      const a = document.createElement("a")
+      a.href = dataUrl
+      a.download = "schedule.png"
+      a.click()
     } catch (error) {
-      console.error("Export failed:", error);
-      alert("Failed to export schedule.");
+      console.error("Export failed:", error)
+      alert("Failed to export schedule.")
     }
   }
+
+  // No need for useEffect to sync stores anymore since we're using a single store
 
   return (
     <div className="grid h-full md:grid-cols-[460px_1fr]">
@@ -90,15 +93,14 @@ export default function App() {
           <div className="text-sm font-semibold">Streaming days</div>
           <div className="flex flex-wrap gap-2">
             {dayOrder.map((key) => {
-              const enabled = week.days[key].enabled;
+              const enabled = week.days[key].enabled
               return (
                 <label
                   key={key}
-                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 select-none ${
-                    enabled
+                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 select-none ${enabled
                       ? "bg-[--color-brand] text-black"
                       : "bg-white text-black"
-                  } hover:brightness-105`}
+                    } hover:brightness-105`}
                 >
                   <input
                     type="checkbox"
@@ -110,7 +112,7 @@ export default function App() {
                   />
                   <span className="text-sm">{SHORTS[key]}</span>
                 </label>
-              );
+              )
             })}
           </div>
           <div className="text-xs text-[--color-muted,#64748b]">
@@ -137,17 +139,17 @@ export default function App() {
               accept="image/*"
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (!f) return setHeroUrl(undefined);
+                const f = e.target.files?.[0]
+                if (!f) return setHeroUrl(undefined)
 
                 // Convert the file to a base64 string instead of using URL.createObjectURL
-                const reader = new FileReader();
+                const reader = new FileReader()
                 reader.onload = (event) => {
                   if (event.target?.result) {
-                    setHeroUrl(event.target.result as string);
+                    setHeroUrl(event.target.result as string)
                   }
-                };
-                reader.readAsDataURL(f);
+                }
+                reader.readAsDataURL(f)
               }}
             />
             <Button
@@ -162,21 +164,21 @@ export default function App() {
         {/* Collapsible day cards for enabled days */}
         <div className="space-y-3 pt-2 pb-8">
           {dayOrder.map((key) => {
-            const plan = week.days[key];
-            if (!plan.enabled) return null;
+            const plan = week.days[key]
+            if (!plan.enabled) return null
 
             // derive the date for this key from the current week order
             // NOTE: WeekPicker controls the anchor date; previews use weekDates internally.
             // For sidebar cards we only need the weekday label; using today's mapping is fine.
             // If you want exact date mapping here too, lift the weekDates calc into store and pass in.
-            const anchor = new Date(week.weekAnchorDate);
-            const startIdx = week.weekStart === "sun" ? 0 : 1;
+            const anchor = new Date(week.weekAnchorDate)
+            const startIdx = week.weekStart === "sun" ? 0 : 1
             const diffFromStart =
               (
                 ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as DayKey[]
-              ).indexOf(key) - startIdx;
-            const date = new Date(anchor);
-            date.setDate(anchor.getDate() + diffFromStart);
+              ).indexOf(key) - startIdx
+            const date = new Date(anchor)
+            date.setDate(anchor.getDate() + diffFromStart)
 
             return (
               <DayAccordion
@@ -187,7 +189,7 @@ export default function App() {
                 onChange={(next) => setDay(key, next)}
                 onDisable={() => updateDay(key, { enabled: false })}
               />
-            );
+            )
           })}
         </div>
       </aside>
@@ -199,5 +201,38 @@ export default function App() {
         </ScaledPreview>
       </main>
     </div>
-  );
+  )
+}
+
+export default () => {
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    // Note: This is just in case you want to take into account manual rehydration.
+    // You can remove the following line if you don't need it.
+    const unsubHydrate = useConfig.persist.onHydrate(() => setHydrated(false))
+
+    const unsubFinishHydration = useConfig.persist.onFinishHydration(() =>
+      setHydrated(true),
+    )
+
+    setHydrated(useConfig.persist.hasHydrated())
+
+    return () => {
+      unsubHydrate()
+      unsubFinishHydration()
+    }
+  }, [])
+
+  if (!hydrated) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="animate-pulse rounded bg-gray-200 p-4 text-gray-400">
+          Loading…
+        </div>
+      </div>
+    )
+  }
+
+  return <App />
 }

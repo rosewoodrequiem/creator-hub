@@ -1,22 +1,22 @@
-import React from "react";
-import type { DayPlan } from "../../types";
-import Button from "../ui/Button";
-import FilePicker from "../ui/FilePicker";
+import React from "react"
+import type { DayPlan } from "../../types"
+import Button from "../ui/Button"
+import FilePicker from "../ui/FilePicker"
 
-type Props = { plan: DayPlan; onChange: (next: DayPlan) => void };
+type Props = { plan: DayPlan; onChange: (next: DayPlan) => void }
 
 export default function DayInlineEditor({ plan, onChange }: Props) {
   function setFile(key: "logoUrl" | "graphicUrl", file?: File) {
-    if (!file) return onChange({ ...plan, [key]: undefined });
+    if (!file) return onChange({ ...plan, [key]: undefined })
 
     // Convert file to base64 data URL
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = (event) => {
       if (event.target?.result) {
-        onChange({ ...plan, [key]: event.target.result as string });
+        onChange({ ...plan, [key]: event.target.result as string })
       }
-    };
-    reader.readAsDataURL(file);
+    }
+    reader.readAsDataURL(file)
   }
 
   return (
@@ -94,5 +94,5 @@ export default function DayInlineEditor({ plan, onChange }: Props) {
         card.
       </div>
     </div>
-  );
+  )
 }
