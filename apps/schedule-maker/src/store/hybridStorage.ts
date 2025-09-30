@@ -3,19 +3,30 @@ import { isPlainObject } from "lodash"
 import { ConfigState } from "./useConfig.types"
 import { deepMapStringsAsync, deepForEachString } from "../utils/object"
 import { ScheduleMakerDB } from "./scheduleMakerDB"
+import { ensureSeed } from "../db/ensureSeed" // <- ✅ import your seeder
 
 const CONFIG_KEY = "schedule-maker-config"
 
-type PersistEnvelope = {
-  state: ConfigState
-  version: number
-}
-
+type PersistEnvelope = { state: ConfigState; version: number }
 const isEnvelope = (v: unknown): v is PersistEnvelope =>
   isPlainObject(v) && "state" in (v as any) && "version" in (v as any)
 
 export class HybridStorage implements StateStorage {
   private db = new ScheduleMakerDB()
+  // lazy, shared seed promise (avoids double work on concurrent calls)
+  private seedOnce: Promise<string | null> | null = null
+
+  private async ensureSeedOnce(): Promise<string | null> {
+    if (!this.seedOnce) {
+      this.seedOnce = ensureSeed()
+        .then((id) => id ?? null)
+        .catch((e) => {
+          console.error("ensureSeed failed:", e)
+          return null
+        })
+    }
+    return this.seedOnce
+  }
 
   private async loadImage(idOrUrl?: string): Promise<string | undefined> {
     if (!idOrUrl || !idOrUrl.startsWith("id:")) return idOrUrl
@@ -26,6 +37,9 @@ export class HybridStorage implements StateStorage {
   }
 
   async getItem(name: string): Promise<string | null> {
+    // ✅ make sure schedules/components and current id exist before config rehydrates
+    await this.ensureSeedOnce()
+
     if (name !== CONFIG_KEY) {
       console.warn("Unexpected storage key:", name)
       return null
@@ -40,9 +54,8 @@ export class HybridStorage implements StateStorage {
         ? parsed
         : ({ state: parsed as ConfigState, version: 1 } as PersistEnvelope)
 
-      // Cache IDB reads within this pass (avoid duplicate gets)
+      // cache idb reads during this pass
       const idReadCache = new Map<string, string | undefined>()
-
       envelope.state = await deepMapStringsAsync(envelope.state, async (s) => {
         if (!s.startsWith("id:")) return s
         const id = s.slice(3)
@@ -50,26 +63,26 @@ export class HybridStorage implements StateStorage {
         if (idReadCache.has(id)) return idReadCache.get(id) ?? s
         const data = await this.loadImage(s)
         idReadCache.set(id, data)
-        return data ?? s // keep "id:" if missing so references aren't lost
+        return data ?? s
       })
 
-      // Ensure version is numeric
       if (typeof envelope.version !== "number") envelope.version = 1
-
       return JSON.stringify(envelope)
     } catch (e) {
       console.error("HybridStorage.getItem parse error:", e)
-      return raw // fallback—let persist try
+      return raw // fallback
     }
   }
 
   async setItem(name: string, value: string): Promise<void> {
+    // ✅ also seed on writes (covers first-ever save flows)
+    await this.ensureSeedOnce()
+
     if (name !== CONFIG_KEY) {
       console.warn("Unexpected storage key:", name)
       return
     }
 
-    // Parse new envelope
     let newEnv: PersistEnvelope
     try {
       const parsed = JSON.parse(value)
@@ -82,7 +95,7 @@ export class HybridStorage implements StateStorage {
       return
     }
 
-    // Parse old envelope (to find stale ids)
+    // read old (for stale id cleanup)
     let oldEnv: PersistEnvelope | null = null
     const oldRaw = localStorage.getItem(name)
     if (oldRaw) {
@@ -96,7 +109,6 @@ export class HybridStorage implements StateStorage {
       }
     }
 
-    // Collect all old IDs
     const oldIds = new Set<string>()
     if (oldEnv?.state) {
       deepForEachString(oldEnv.state, (s) => {
@@ -107,15 +119,13 @@ export class HybridStorage implements StateStorage {
       })
     }
 
-    // Deduplicate data: writes within this call
     const keptIds = new Set<string>()
-    const dataUrlToId = new Map<string, string>() // data:... -> id
+    const dataUrlToId = new Map<string, string>()
     const makeId = () =>
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random()}`
 
     const nextState = await deepMapStringsAsync(newEnv.state, async (s) => {
       if (s.startsWith("data:")) {
-        // Reuse existing id if this exact data URL already seen in this save
         let id = dataUrlToId.get(s)
         if (!id) {
           id = makeId()
@@ -123,25 +133,21 @@ export class HybridStorage implements StateStorage {
             await this.db.images.put({ id, data: s })
           } catch (err) {
             console.warn("IDB put failed; leaving data URL inline", err)
-            return s // keep data: inline if quota/IDB error
+            return s
           }
           dataUrlToId.set(s, id)
         }
         keptIds.add(id)
         return "id:" + id
       }
-
       if (s.startsWith("id:")) {
         const id = s.slice(3)
         if (id) keptIds.add(id)
         return s
       }
-
-      // http(s), blob:, other strings — passthrough
       return s
     })
 
-    // Remove stale IDs not referenced anymore
     for (const id of oldIds) {
       if (!keptIds.has(id)) {
         try {
@@ -159,7 +165,10 @@ export class HybridStorage implements StateStorage {
     localStorage.setItem(name, finalStr)
   }
 
-  removeItem(name: string): void {
+  async removeItem(name: string): Promise<void> {
+    // ✅ seed isn’t strictly necessary here, but harmless if called
+    await this.ensureSeedOnce()
+
     if (name !== CONFIG_KEY) {
       localStorage.removeItem(name)
       return

@@ -1,7 +1,6 @@
 // db/scheduleDb.ts
 import Dexie, { Table } from "dexie"
-import { Component } from "react"
-import { Schedule } from "./SheduleMakerDB.types"
+import { Schedule, ScheduleComponent } from "./SheduleMakerDB.types"
 
 const DB_NAME = "schedule-maker"
 export const CURRENT_SCHEDULE_KEY = "schedule-maker/currentScheduleId"
@@ -9,7 +8,7 @@ export const CURRENT_SCHEDULE_KEY = "schedule-maker/currentScheduleId"
 export class ScheduleMakerDB extends Dexie {
   images!: Table<{ id: string; data: string }, string>
   schedules!: Table<Schedule, string>
-  components!: Table<Component, string>
+  components!: Table<ScheduleComponent, string>
 
   constructor() {
     super(DB_NAME)

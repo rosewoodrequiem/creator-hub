@@ -18,7 +18,7 @@ export type Schedule = {
   themeId?: string // optional UI theme reference
 }
 
-export type Component = {
+export type ScheduleComponent = {
   id: string // uuid
   scheduleId: string // FK -> Schedule.id
   kind: ComponentKind
