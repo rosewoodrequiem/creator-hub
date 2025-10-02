@@ -30,4 +30,5 @@ export const DEFAULT_CONFIG: ConfigProps = {
   weekStart: "mon",
   weekOffset: 0,
   sidebarOpen: true,
+  components: [],
 }

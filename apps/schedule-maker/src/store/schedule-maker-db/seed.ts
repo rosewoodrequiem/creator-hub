@@ -19,11 +19,11 @@ function defaultComponents(scheduleId: string): ScheduleComponent[] {
     {
       id: crypto.randomUUID(),
       scheduleId,
-      kind: "title",
+      kind: "text",
       position: { x: 40, y: 40 },
       size: { w: 600, h: 60 },
       zIndex: 1,
-      props: { text: "Streaming Schedule" },
+      props: { text: "Schedule" },
       createdAt: now,
       updatedAt: now,
     },
@@ -69,10 +69,10 @@ export async function ensureSeed(): Promise<string> {
 
   // Step 3: seed brand-new default
   const schedule = defaultSchedule()
-  const comps = defaultComponents(schedule.id)
+  //const comps = defaultComponents(schedule.id)
   await db.transaction("rw", db.schedules, db.components, async () => {
     await db.schedules.put(schedule)
-    await db.components.bulkPut(comps)
+    //await db.components.bulkPut(comps)
   })
   localStorage.setItem(CURRENT_SCHEDULE_KEY, schedule.id)
   return schedule.id

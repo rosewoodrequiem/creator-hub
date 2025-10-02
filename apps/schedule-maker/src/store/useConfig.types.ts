@@ -1,4 +1,5 @@
 import type { WeekPlan, DayKey, DayPlan } from "../types"
+import { Components } from "../types/Components"
 
 type TemplateId = "ElegantBlue"
 
@@ -10,6 +11,7 @@ export type ConfigProps = {
   weekStart: "sun" | "mon"
   weekOffset: number
   sidebarOpen: boolean
+  components: Components[]
 }
 
 export type ConfigState = ConfigProps & {

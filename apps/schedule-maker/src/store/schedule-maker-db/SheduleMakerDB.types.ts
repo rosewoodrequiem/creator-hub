@@ -1,5 +1,4 @@
 export type ComponentKind =
-  | "title"
   | "game-slot"
   | "image"
   | "text"

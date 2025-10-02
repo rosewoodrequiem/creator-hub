@@ -37,7 +37,6 @@ export class HybridStorage implements StateStorage {
   }
 
   async getItem(name: string): Promise<string | null> {
-    // ✅ make sure schedules/components and current id exist before config rehydrates
     await this.ensureSeedOnce()
 
     if (name !== CONFIG_KEY) {

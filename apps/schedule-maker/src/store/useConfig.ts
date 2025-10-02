@@ -51,15 +51,7 @@ export const useConfig = create<ConfigState>()(
       storage: createJSONStorage(() => storage),
       version: 1,
 
-      partialize: (s) => ({
-        week: s.week,
-        template: s.template,
-        heroUrl: s.heroUrl,
-        exportScale: s.exportScale,
-        weekStart: s.weekStart,
-        weekOffset: s.weekOffset,
-        sidebarOpen: s.sidebarOpen,
-      }),
+      partialize: (s) => (JSON.parse(JSON.stringify(s))),
 
       merge: (persisted, current) => {
         const p = persisted as Partial<ConfigState> | undefined
