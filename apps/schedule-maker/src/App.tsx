@@ -9,8 +9,14 @@ import * as htmlToImage from "html-to-image"
 import { SHORTS } from "./constants"
 import { useConfig } from "./store/useConfig"
 import { useEffect, useState } from "react"
+import { useLiveQuery } from "dexie-react-hooks"
+import { db } from "./store/schedule-maker-db/ScheduleMakerDB"
+import { Day } from "./types/Day"
 
 function App() {
+  const weekStart = useLiveQuery(
+    () => db.weekStart
+  );
   const week = useConfig((s) => s.week)
   const heroUrl = useConfig((s) => s.heroUrl)
   const exportScale = useConfig((s) => s.exportScale)
@@ -19,8 +25,10 @@ function App() {
   const updateDay = useConfig((s) => s.updateDay)
   const setDay = useConfig((s) => s.setDay)
 
+  console.log("Render App", { weekStart }, Day.SUN)
+
   const dayOrder: DayKey[] =
-    week.weekStart === "sun"
+    weekStart === Day.SUN.toLowerCase()
       ? ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
       : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -98,8 +106,8 @@ function App() {
                 <label
                   key={key}
                   className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 select-none ${enabled
-                      ? "bg-[--color-brand] text-black"
-                      : "bg-white text-black"
+                    ? "bg-[--color-brand] text-black"
+                    : "bg-white text-black"
                     } hover:brightness-105`}
                 >
                   <input

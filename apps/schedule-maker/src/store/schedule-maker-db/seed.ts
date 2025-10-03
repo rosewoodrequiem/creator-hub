@@ -1,12 +1,10 @@
 import { Transaction } from "dexie"
-import { CURRENT_SCHEDULE_KEY, db, ScheduleMakerDB } from "./ScheduleMakerDB"
 import { ScheduleComponent, Schedule } from "./SheduleMakerDB.types"
+import { Day } from "../../types/Day"
 
 function defaultSchedule(): Schedule {
-  const id = crypto.randomUUID()
   const now = Date.now()
   return {
-    id,
     name: "My First Schedule",
     createdAt: now,
     updatedAt: now,
@@ -14,11 +12,10 @@ function defaultSchedule(): Schedule {
   }
 }
 
-function defaultComponents(scheduleId: string): ScheduleComponent[] {
+function defaultComponents(scheduleId: number): ScheduleComponent[] {
   const now = Date.now()
   return [
     {
-      id: crypto.randomUUID(),
       scheduleId,
       kind: "text",
       position: { x: 40, y: 40 },
@@ -29,7 +26,6 @@ function defaultComponents(scheduleId: string): ScheduleComponent[] {
       updatedAt: now,
     },
     {
-      id: crypto.randomUUID(),
       scheduleId,
       kind: "game-slot",
       position: { x: 40, y: 120 },
@@ -42,23 +38,50 @@ function defaultComponents(scheduleId: string): ScheduleComponent[] {
   ]
 }
 
-const defaultGlobal = (scheduleId: string) => ({
-  id: crypto.randomUUID(),
+const defaultScheduleDay = (day: Day) => ({
+  gameName: "",
+  day,
+  time: "",
+})
+
+const defaultSchedulePlan = () => ([
+  defaultScheduleDay(Day.MON),
+  defaultScheduleDay(Day.TUE),
+  defaultScheduleDay(Day.WED),
+  defaultScheduleDay(Day.THU),
+  defaultScheduleDay(Day.FRI),
+  defaultScheduleDay(Day.SAT),
+  defaultScheduleDay(Day.SUN),
+])
+
+const defaultScheduleData = () => ({
+  weekStart: Day.MON,
+  weekOffset: 0,
+})
+
+const defaultGlobal = (scheduleId: number) => ({
   currentScheduleId: scheduleId,
 })
 
-export async function seed(transaction: Transaction): Promise<string> {
-  const schedule = defaultSchedule()
-  const comps = defaultComponents(schedule.id)
-  const global = defaultGlobal(schedule.id)
 
-  await transaction.schedules.put(schedule)
+export async function seed(transaction: Transaction) {
+  const schedule = defaultSchedule()
+  const scheduleId = await transaction.schedules.put(schedule)
+
+  const scheduleData = defaultScheduleData()
+  const scheduleDayPlan = defaultSchedulePlan()
+  const comps = defaultComponents(scheduleId)
+  const global = defaultGlobal(scheduleId)
+
+
+  await transaction.scheduleData.put(scheduleData)
+  await transaction.scheduleDayPlan.bulkPut(scheduleDayPlan)
   await transaction.components.bulkPut(comps)
   await transaction.global.put(global)
-  return schedule.id
+  return scheduleId
 }
 
-export async function ensureSeed(): Promise<string> {
+/*export async function ensureSeed(): Promise<string> {
   // Step 1: check if a current schedule is saved
   const currentId = localStorage.getItem(CURRENT_SCHEDULE_KEY)
   if (currentId) {
@@ -93,4 +116,4 @@ export async function ensureSeed(): Promise<string> {
   })
   localStorage.setItem(CURRENT_SCHEDULE_KEY, schedule.id)
   return schedule.id
-}
+}*/

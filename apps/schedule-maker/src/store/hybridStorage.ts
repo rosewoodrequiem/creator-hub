@@ -3,7 +3,7 @@ import { isPlainObject } from "lodash"
 import { ConfigState } from "./useConfig.types"
 import { deepMapStringsAsync, deepForEachString } from "../utils/object"
 import { ScheduleMakerDB } from "./schedule-maker-db/ScheduleMakerDB"
-import { ensureSeed } from "./schedule-maker-db/seed"
+//import { ensureSeed } from "./schedule-maker-db/seed"
 
 const CONFIG_KEY = "schedule-maker-config"
 
@@ -18,12 +18,12 @@ export class HybridStorage implements StateStorage {
 
   private async ensureSeedOnce(): Promise<string | null> {
     if (!this.seedOnce) {
-      this.seedOnce = ensureSeed()
+      /*this.seedOnce = ensureSeed()
         .then((id) => id ?? null)
         .catch((e) => {
           console.error("ensureSeed failed:", e)
           return null
-        })
+        })*/
     }
     return this.seedOnce
   }
