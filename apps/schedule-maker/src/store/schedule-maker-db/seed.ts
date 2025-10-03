@@ -1,4 +1,5 @@
-import { CURRENT_SCHEDULE_KEY, db } from "./ScheduleMakerDB"
+import { Transaction } from "dexie"
+import { CURRENT_SCHEDULE_KEY, db, ScheduleMakerDB } from "./ScheduleMakerDB"
 import { ScheduleComponent, Schedule } from "./SheduleMakerDB.types"
 
 function defaultSchedule(): Schedule {
@@ -39,6 +40,22 @@ function defaultComponents(scheduleId: string): ScheduleComponent[] {
       updatedAt: now,
     },
   ]
+}
+
+const defaultGlobal = (scheduleId: string) => ({
+  id: crypto.randomUUID(),
+  currentScheduleId: scheduleId,
+})
+
+export async function seed(transaction: Transaction): Promise<string> {
+  const schedule = defaultSchedule()
+  const comps = defaultComponents(schedule.id)
+  const global = defaultGlobal(schedule.id)
+
+  await transaction.schedules.put(schedule)
+  await transaction.components.bulkPut(comps)
+  await transaction.global.put(global)
+  return schedule.id
 }
 
 export async function ensureSeed(): Promise<string> {
