@@ -1,10 +1,12 @@
+import { ScheduleDayPlan } from '../../types/SheduleDayPlan'
+
 export type ComponentKind =
-  | "game-slot"
-  | "image"
-  | "text"
-  | "badge"
-  | "time"
-  | "divider"
+  | 'game-slot'
+  | 'image'
+  | 'text'
+  | 'badge'
+  | 'time'
+  | 'divider'
 
 export type Vec2 = { x: number; y: number }
 export type Size = { w: number; h: number }
@@ -29,3 +31,5 @@ export type ScheduleComponent = {
   createdAt: number
   updatedAt: number
 }
+
+export type ImageRow = { id?: number; data: string }

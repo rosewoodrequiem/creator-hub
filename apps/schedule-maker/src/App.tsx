@@ -1,39 +1,29 @@
-import type { DayKey } from "./types"
-import WeekPicker from "./editor/components/WeekPicker"
-import SchedulePreview from "./canvas/SchedulePreview"
-import TemplatePicker from "./editor/components/TemplatePicker"
-import ScaledPreview from "./canvas/ScaledPreview"
-import Button from "./editor/ui/Button"
-import DayAccordion from "./editor/components/DayAccordion"
-import * as htmlToImage from "html-to-image"
-import { SHORTS } from "./constants"
-import { useConfig } from "./store/useConfig"
-import { useEffect, useState } from "react"
-import { useLiveQuery } from "dexie-react-hooks"
-import { db } from "./store/schedule-maker-db/ScheduleMakerDB"
-import { Day } from "./types/Day"
+import WeekPicker from './editor/components/WeekPicker'
+import SchedulePreview from './canvas/SchedulePreview'
+import TemplatePicker from './editor/components/TemplatePicker'
+import ScaledPreview from './canvas/ScaledPreview'
+import Button from './editor/ui/Button'
+import * as htmlToImage from 'html-to-image'
+import { useConfig } from './store/useConfig'
+import { useEffect, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from './store/schedule-maker-db/ScheduleMakerDB'
+import { Day } from './types/Day'
+import { DayChecklist } from './editor/components/day-editor/DayChecklist'
 
 function App() {
-  const weekStart = useLiveQuery(
-    () => db.weekStart
-  );
-  const week = useConfig((s) => s.week)
-  const heroUrl = useConfig((s) => s.heroUrl)
+  const weekStart = useLiveQuery(() => db.weekStart)
   const exportScale = useConfig((s) => s.exportScale)
   const setExportScale = useConfig((s) => s.setExportScale)
   const setHeroUrl = useConfig((s) => s.setHeroUrl)
-  const updateDay = useConfig((s) => s.updateDay)
-  const setDay = useConfig((s) => s.setDay)
 
-  console.log("Render App", { weekStart }, Day.SUN)
-
-  const dayOrder: DayKey[] =
+  const dayOrder: Day[] =
     weekStart === Day.SUN.toLowerCase()
-      ? ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-      : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+      ? [Day.SUN, Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT]
+      : [Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT, Day.SUN]
 
   async function handleExport() {
-    const src = document.getElementById("capture-root")
+    const src = document.getElementById('capture-root')
     if (!src) return
 
     // Ensure fonts are ready
@@ -45,20 +35,20 @@ function App() {
       const dataUrl = await htmlToImage.toPng(src, {
         pixelRatio: Math.min(4, pixelRatio * 2), // 3–4 looks great
         cacheBust: true,
-        style: { imageRendering: "" },
+        style: { imageRendering: '' },
         // If you need to omit debug elements, you can filter nodes:
         // filter: (node) => !node.classList?.contains('no-export'),
         // You can also override styles for export only:
         // style: { imageRendering: "auto" },
       })
 
-      const a = document.createElement("a")
+      const a = document.createElement('a')
       a.href = dataUrl
-      a.download = "schedule.png"
+      a.download = 'schedule.png'
       a.click()
     } catch (error) {
-      console.error("Export failed:", error)
-      alert("Failed to export schedule.")
+      console.error('Export failed:', error)
+      alert('Failed to export schedule.')
     }
   }
 
@@ -97,36 +87,7 @@ function App() {
         <WeekPicker />
 
         {/* Day checklist chips */}
-        <div className="space-y-2">
-          <div className="text-sm font-semibold">Streaming days</div>
-          <div className="flex flex-wrap gap-2">
-            {dayOrder.map((key) => {
-              const enabled = week.days[key].enabled
-              return (
-                <label
-                  key={key}
-                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 select-none ${enabled
-                    ? "bg-[--color-brand] text-black"
-                    : "bg-white text-black"
-                    } hover:brightness-105`}
-                >
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={enabled}
-                    onChange={(e) =>
-                      updateDay(key, { enabled: e.target.checked })
-                    }
-                  />
-                  <span className="text-sm">{SHORTS[key]}</span>
-                </label>
-              )
-            })}
-          </div>
-          <div className="text-xs text-[--color-muted,#64748b]">
-            Check days you’re streaming, then expand any day to edit details.
-          </div>
-        </div>
+        <DayChecklist days={dayOrder} />
 
         {/* Hero image override */}
         <div className="space-y-2">
@@ -136,7 +97,7 @@ function App() {
               className="bg-[--color-brand] text-black"
               hoverClass="hover:brightness-105"
               onClick={() =>
-                document.getElementById("hero-file-input")?.click()
+                document.getElementById('hero-file-input')?.click()
               }
             >
               Select hero image
@@ -170,36 +131,6 @@ function App() {
         </div>
 
         {/* Collapsible day cards for enabled days */}
-        <div className="space-y-3 pt-2 pb-8">
-          {dayOrder.map((key) => {
-            const plan = week.days[key]
-            if (!plan.enabled) return null
-
-            // derive the date for this key from the current week order
-            // NOTE: WeekPicker controls the anchor date; previews use weekDates internally.
-            // For sidebar cards we only need the weekday label; using today's mapping is fine.
-            // If you want exact date mapping here too, lift the weekDates calc into store and pass in.
-            const anchor = new Date(week.weekAnchorDate)
-            const startIdx = week.weekStart === "sun" ? 0 : 1
-            const diffFromStart =
-              (
-                ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as DayKey[]
-              ).indexOf(key) - startIdx
-            const date = new Date(anchor)
-            date.setDate(anchor.getDate() + diffFromStart)
-
-            return (
-              <DayAccordion
-                key={key}
-                dayKey={key}
-                date={date}
-                plan={plan}
-                onChange={(next) => setDay(key, next)}
-                onDisable={() => updateDay(key, { enabled: false })}
-              />
-            )
-          })}
-        </div>
       </aside>
 
       {/* RIGHT: Preview (no scroll; scaled to fit) */}
