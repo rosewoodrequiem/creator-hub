@@ -20,16 +20,16 @@ export const DAY_LABELS: Record<Day, string> = {
   [Day.SAT]: 'Saturday',
 }
 
-export function startOfWeek(d: Date, weekStart: 'sun' | 'mon') {
+export function startOfWeek(d: Date, weekStart: Day) {
   const day = d.getDay() // 0=Sun..6=Sat
-  const shift = weekStart === 'mon' ? (day === 0 ? -6 : 1 - day) : -day
+  const shift = weekStart === Day.MON ? (day === 0 ? -6 : 1 - day) : -day
   const s = new Date(d)
   s.setDate(d.getDate() + shift)
   s.setHours(0, 0, 0, 0)
   return s
 }
 
-export function weekDates(anchorISO: string, weekStart: 'sun' | 'mon') {
+export function weekDates(anchorISO: Date, weekStart: Day) {
   const anchor = new Date(anchorISO)
   const start = startOfWeek(anchor, weekStart)
   return Array.from({ length: 7 }, (_, i) => {

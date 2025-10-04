@@ -5,7 +5,7 @@ import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
 
 type Props = {
   plan: ScheduleDayPlan
-  onChange: (next: ScheduleDayPlan) => void
+  onChange: (next: Partial<ScheduleDayPlan>) => void
   onGrapicChange: (file?: File) => void
 }
 
@@ -17,11 +17,11 @@ export default function DayInlineEditor({
   return (
     <div className="grid gap-3">
       <label className="block text-sm">
-        Game name
+        Activity name
         <input
           className="mt-1 w-full rounded-lg border p-2"
           value={plan.gameName}
-          onChange={(e) => onChange({ ...plan, gameName: e.target.value })}
+          onChange={(e) => onChange({ gameName: e.target.value })}
           placeholder="e.g., Baldur’s Gate 3"
         />
       </label>
@@ -32,7 +32,7 @@ export default function DayInlineEditor({
           type="time"
           className="mt-1 w-full rounded-lg border p-2"
           value={plan.time}
-          onChange={(e) => onChange({ ...plan, time: e.target.value })}
+          onChange={(e) => onChange({ time: e.target.value })}
         />
       </label>
 
@@ -49,7 +49,7 @@ export default function DayInlineEditor({
               />
               <Button
                 className="w-full border bg-white text-xs hover:bg-[#f3f4f6]"
-                onClick={() => onChange({ ...plan, gameGraphic: undefined })}
+                onClick={() => onChange({ gameGraphic: undefined })}
               >
                 Clear
               </Button>

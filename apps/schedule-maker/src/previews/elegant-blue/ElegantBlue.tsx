@@ -1,36 +1,34 @@
-import { useConfig } from "../../store/useConfig"
-import type { DayKey } from "../../types"
+import { useConfig } from '../../store/useConfig'
 import {
   DAY_LABELS,
   fmtTime,
   fmtZone,
   shortMonthDay,
   weekDates,
-} from "../../utils/date"
-import NoiseOverlay from "../../canvas/components/NoiseOverlay"
-import { DayCard } from "./DayCard"
-import GlowingBox from "./GlowBox"
+} from '../../utils/date'
+import NoiseOverlay from '../../canvas/components/NoiseOverlay'
+import { DayCard } from './DayCard'
+import { getDaysOrderedByWeekStart } from '../../utils/days'
+import { useWeek } from '../../editor/hooks/useWeek'
+import { Day } from '../../types/Day'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 
 export default function ElegantBlue({
-  captureId = "capture-root",
+  captureId = 'capture-root',
 }: {
   captureId?: string
 }) {
-  const week = useConfig((s) => s.week)
-  const heroUrl = useConfig((s) => s.heroUrl)
-  console.log("ElegantBlue render", { heroUrl })
+  const { week, weekStart, weekAnchor } = useWeek()
+  const hero = useLiveQuery(() => {
+    db.heroUrl
+  })
 
-  const dayOrder: DayKey[] =
-    week.weekStart === "sun"
-      ? ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-      : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+  const dayOrder = getDaysOrderedByWeekStart(weekStart ?? Day.MON)
 
-  const dates = weekDates(week.weekAnchorDate, week.weekStart)
-  const enabledKeys = dayOrder.filter((k) => week.days[k].enabled)
-  const heroAuto = enabledKeys.find((k) => week.days[k].graphicUrl) || null
-  const hero =
-    heroUrl ?? (heroAuto ? week.days[heroAuto].graphicUrl : undefined)
-  console.log("ElegantBlue render", { heroUrl, heroAuto, hero })
+  const dates = weekAnchor && weekStart ? weekDates(weekAnchor, weekStart) : []
+  //TODO: Handle enabled cards
+  const enabledKeys = [] //dayOrder.filter((k) => week.days[k].enabled)
 
   return (
     <div className="elegant-blue-theme">
@@ -44,14 +42,14 @@ export default function ElegantBlue({
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(1000px 600px at 20% 0%, rgba(255,255,255,0.18), rgba(255,255,255,0) 60%)",
+              'radial-gradient(1000px 600px at 20% 0%, rgba(255,255,255,0.18), rgba(255,255,255,0) 60%)',
           }}
         />
 
         {/* LEFT: header + cards (put above hero via z-index) */}
         <div className="relative z-20 h-full text-2xl">
           {/* week badge */}
-          <div className="absolute top-8 left-8" style={{ maxWidth: "130px" }}>
+          <div className="absolute top-8 left-8" style={{ maxWidth: '130px' }}>
             <div className="bg-primary rounded-xl px-4 py-3 font-semibold backdrop-blur-sm">
               {shortMonthDay(dates[0])} – {shortMonthDay(dates[6])}
             </div>
@@ -74,7 +72,7 @@ export default function ElegantBlue({
               const date = dates[idx]
               const when = plan.time
                 ? fmtTime(date, plan.time, plan.timezone)
-                : "Time TBD"
+                : 'Time TBD'
               const zone = fmtZone(date, plan.timezone)
               const formattedDate = shortMonthDay(date)
               return (
@@ -108,7 +106,7 @@ export default function ElegantBlue({
             className="absolute inset-0 hidden"
             style={{
               background:
-                "linear-gradient(90deg, rgba(144,164,191,0) 0%, rgba(144,164,191,0.65) 55%, rgba(144,164,191,0.85) 72%, rgba(144,164,191,0.95) 88%, rgba(144,164,191,1) 100%)",
+                'linear-gradient(90deg, rgba(144,164,191,0) 0%, rgba(144,164,191,0.65) 55%, rgba(144,164,191,0.85) 72%, rgba(144,164,191,0.95) 88%, rgba(144,164,191,1) 100%)',
             }}
           />
           <NoiseOverlay opacity={0.05} />

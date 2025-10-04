@@ -11,12 +11,18 @@ import { db } from './store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from './types/Day'
 import { DayChecklist } from './editor/components/day-editor/DayChecklist'
 import { DayEditor } from './editor/components/day-editor/DayEditor'
+import { ScheduleData } from './store/api/ScheduleData'
 
 function App() {
   const weekStart = useLiveQuery(() => db.weekStart)
   const exportScale = useConfig((s) => s.exportScale)
   const setExportScale = useConfig((s) => s.setExportScale)
   const setHeroUrl = useConfig((s) => s.setHeroUrl)
+
+  const handleUploadHero = async (file: File) => {
+    const scheuldeData = await ScheduleData()
+    scheuldeData?.setHeroUrl(file)
+  }
 
   const dayOrder: Day[] =
     weekStart === Day.SUN.toLowerCase()
@@ -112,16 +118,7 @@ function App() {
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0]
-                if (!f) return setHeroUrl(undefined)
-
-                // Convert the file to a base64 string instead of using URL.createObjectURL
-                const reader = new FileReader()
-                reader.onload = (event) => {
-                  if (event.target?.result) {
-                    setHeroUrl(event.target.result as string)
-                  }
-                }
-                reader.readAsDataURL(f)
+                handleUploadHero(f!)
               }}
             />
             <Button

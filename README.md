@@ -91,3 +91,4 @@ And join the Nx community:
 # Roadmap:
 
 - Store md5 hash or simular for images to prevent reuploading same file
+- load db with loading screen so that we dont have to deal with undefined

@@ -23,6 +23,8 @@ export const useWeek = () => {
 
   return {
     week,
+    weekStart,
+    weekAnchor,
     getDateFromDay,
   }
 }

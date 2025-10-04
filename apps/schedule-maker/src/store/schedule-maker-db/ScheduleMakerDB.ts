@@ -43,10 +43,18 @@ export class ScheduleMakerDB extends Dexie {
   }
 
   get weekStart() {
-    return this.scheduleData.get(1).then((d) => d?.weekStart ?? 1)
+    return this.scheduleData.get(1).then((d) => d?.weekStart ?? Day.MON)
   }
   get weekAnchor() {
     return this.scheduleData.get(1).then((d) => d?.weekAnchor ?? new Date())
+  }
+
+  get heroUrl() {
+    return this.scheduleData.get(1).then((d) => {
+      const imageId = d?.heroUrl
+      if (!imageId) return undefined
+      return this.images.get(imageId).then((img) => img?.data)
+    })
   }
 
   get timezone() {
