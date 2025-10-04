@@ -10,6 +10,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from './types/Day'
 import { DayChecklist } from './editor/components/day-editor/DayChecklist'
+import { DayEditor } from './editor/components/day-editor/DayEditor'
 
 function App() {
   const weekStart = useLiveQuery(() => db.weekStart)
@@ -88,6 +89,8 @@ function App() {
 
         {/* Day checklist chips */}
         <DayChecklist days={dayOrder} />
+
+        <DayEditor days={dayOrder} />
 
         {/* Hero image override */}
         <div className="space-y-2">
