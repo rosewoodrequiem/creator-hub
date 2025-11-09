@@ -1,14 +1,17 @@
-import React from "react"
-import type { DayPlan, DayKey } from "../../types"
-import { DAY_LABELS, fmtTime, shortMonthDay } from "../../utils/date"
-import Button from "../ui/Button"
-import DayInlineEditor from "./DayInlineEditor"
+import React from 'react'
+import { DAY_LABELS, fmtTime, shortMonthDay } from '../../../utils/date'
+import Button from '../../ui/Button'
+import DayInlineEditor from './DayInlineEditor'
+import { Day } from '../../../types/Day'
+import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
 
 type Props = {
-  dayKey: DayKey
-  date: Date
-  plan: DayPlan
-  onChange: (next: DayPlan) => void
+  dayKey: Day
+  date: Date | null
+  plan: ScheduleDayPlan
+  timezone?: string
+  onChange: (next: Partial<ScheduleDayPlan>) => void
+  onGrapicChange: (file?: File) => void
   onDisable: () => void
 }
 
@@ -16,12 +19,15 @@ export default function DayAccordion({
   dayKey,
   date,
   plan,
+  timezone,
   onChange,
+  onGrapicChange,
   onDisable,
 }: Props) {
   const [open, setOpen] = React.useState(true)
 
-  const when = plan.time ? fmtTime(date, plan.time, plan.timezone) : "Set time…"
+  const when =
+    plan.time && date ? fmtTime(date, plan.time, timezone) : 'Set time…'
 
   return (
     <div className="rounded-2xl border">
@@ -32,7 +38,7 @@ export default function DayAccordion({
         className="flex w-full cursor-pointer items-center justify-between rounded-t-2xl px-3 py-2 hover:bg-[#f3f4f6]"
       >
         <div className="flex items-center gap-2 text-left">
-          <span className="text-gray-500">{open ? "▾" : "▸"}</span>
+          <span className="text-gray-500">{open ? '▾' : '▸'}</span>
           <div className="text-sm font-semibold">
             {DAY_LABELS[dayKey]} — {shortMonthDay(date)}
           </div>
@@ -54,7 +60,11 @@ export default function DayAccordion({
             </Button>
           </div>
           <div className="pt-2">
-            <DayInlineEditor plan={plan} onChange={onChange} />
+            <DayInlineEditor
+              plan={plan}
+              onChange={onChange}
+              onGrapicChange={onGrapicChange}
+            />
           </div>
         </div>
       )}

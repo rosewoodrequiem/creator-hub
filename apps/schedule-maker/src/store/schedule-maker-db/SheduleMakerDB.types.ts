@@ -1,0 +1,36 @@
+import { ScheduleDayPlan } from '../../types/SheduleDayPlan'
+import { TemplateId } from '../../types/Template'
+
+export type ComponentKind =
+  | 'game-slot'
+  | 'image'
+  | 'text'
+  | 'badge'
+  | 'time'
+  | 'divider'
+
+export type Vec2 = { x: number; y: number }
+export type Size = { w: number; h: number }
+
+export type Schedule = {
+  id?: number
+  name: string
+  createdAt: number
+  updatedAt: number
+  themeId: TemplateId
+}
+
+export type ScheduleComponent = {
+  id?: number
+  scheduleId: number // FK -> Schedule.id
+  kind: ComponentKind
+  position: Vec2 // top-left (px)
+  size: Size // width/height (px)
+  zIndex: number // draw order
+  props: Record<string, unknown> // arbitrary data for the component
+  locked?: boolean // prevent drag/remove
+  createdAt: number
+  updatedAt: number
+}
+
+export type ImageRow = { id?: number; data: string }

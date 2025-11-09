@@ -1,13 +1,13 @@
-import React from "react"
-import DayCard from "./DayCard"
+import React from 'react'
+import DayCard from './day-editor/DayCard'
 
 const Sidebar = () => {
   const week = [
-    { day: "Monday", events: ["Meeting 1", "Call 2"] },
-    { day: "Tuesday", events: ["Event A", "Event B"] },
-    { day: "Wednesday", events: ["Workshop"] },
-    { day: "Thursday", events: ["Review", "Sync"] },
-    { day: "Friday", events: ["Party 🎉"] },
+    { day: 'Monday', events: ['Meeting 1', 'Call 2'] },
+    { day: 'Tuesday', events: ['Event A', 'Event B'] },
+    { day: 'Wednesday', events: ['Workshop'] },
+    { day: 'Thursday', events: ['Review', 'Sync'] },
+    { day: 'Friday', events: ['Party 🎉'] },
   ]
 
   return (

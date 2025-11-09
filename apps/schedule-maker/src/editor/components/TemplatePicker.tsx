@@ -1,20 +1,28 @@
-import React from "react"
-import { useConfig } from "../../store/useConfig"
+import React from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
+import { PREVIEWS } from '../../previews'
+import type { TemplateId } from '../../types/Template'
 
 export default function TemplatePicker() {
-  const template = useConfig((s) => s.template)
-  const setTemplate = useConfig((s) => s.setTemplate)
+  const template = useLiveQuery(() => db.currentTemplate)
+  const activeTemplate = template ?? 'ElegantBlue'
 
   return (
     <label className="block text-xs">
       Preview style
       <select
         className="ml-2 rounded-lg border px-2 py-1"
-        value={template}
-        onChange={(e) => setTemplate(e.target.value as any)}
+        value={activeTemplate}
+        onChange={async (e) => {
+          await db.setCurrentTemplate(e.target.value as TemplateId)
+        }}
       >
-        <option value="ElegantBlue">Elegant Blue</option>
-        {/* add more options as you create new previews */}
+        {Object.values(PREVIEWS).map(({ id }) => (
+          <option key={id} value={id}>
+            {id.replace(/([A-Z])/g, ' $1').trim()}
+          </option>
+        ))}
       </select>
     </label>
   )

@@ -8,6 +8,8 @@
   "private": true,
   "dependencies": {
     "dexie": "^4.2.0",
+    "dexie-react-hooks": "^4.2.0",
+    "dexie-relationships": "^1.2.11",
     "html-to-image": "^1.11.13",
     "html2canvas-pro": "^1.5.11",
     "lodash": "^4.17.21",
@@ -32,7 +34,6 @@
     "@swc/helpers": "~0.5.11",
     "@testing-library/dom": "10.4.0",
     "@testing-library/react": "16.1.0",
-    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/lodash": "^4.17.20",
     "@types/node": "20.19.9",
     "@types/react": "19.0.0",
@@ -41,6 +42,7 @@
     "@vitest/coverage-v8": "^3.0.5",
     "@vitest/ui": "^3.0.0",
     "autoprefixer": "10.4.13",
+    "babel-prettier-parser": "^0.10.8",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-import": "2.31.0",
@@ -61,5 +63,5 @@
     "vite": "^7.0.0",
     "vitest": "^3.0.0"
   },
-  "packageManager": "pnpm@10.10.0+sha512.d615db246fe70f25dcfea6d8d73dee782ce23e2245e3c4f6f888249fb568149318637dca73c2c5c8ef2a4ca0d5657fb9567188bfab47f566d1ee6ce987815c39"
+  "packageManager": "pnpm@10.18.0+sha512.e804f889f1cecc40d572db084eec3e4881739f8dec69c0ff10d2d1beff9a4e309383ba27b5b750059d7f4c149535b6cd0d2cb1ed3aeb739239a4284a68f40cfa"
 }
