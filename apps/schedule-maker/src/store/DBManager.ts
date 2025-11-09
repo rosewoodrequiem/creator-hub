@@ -1,5 +1,5 @@
 export const createDBManager = () => {
-    return {}
+  return {}
 }
 
 export const DBManager = createDBManager()

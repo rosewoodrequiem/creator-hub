@@ -86,4 +86,3 @@ export async function seed(transaction: Transaction) {
   await transaction.global.put(global)
   return scheduleId
 }
-

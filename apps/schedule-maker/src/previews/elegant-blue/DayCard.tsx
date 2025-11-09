@@ -21,8 +21,8 @@ export const DayCard: React.FC<DayCardProps> = ({
     <div
       className="from-primary to-base relative grid h-[200px] grid-cols-[1fr_320px] items-center overflow-hidden overflow-visible rounded-2xl bg-linear-to-r to-50%"
       style={{
-        backdropFilter: "blur(6px)",
-        border: "1px solid rgba(255,255,255,0.45)",
+        backdropFilter: 'blur(6px)',
+        border: '1px solid rgba(255,255,255,0.45)',
       }}
     >
       {/* Name Card */}
@@ -36,7 +36,7 @@ export const DayCard: React.FC<DayCardProps> = ({
         {/* Date Time */}
         <div className="mt-2.5 flex min-w-0 grow flex-col items-center gap-2">
           <div className="flex min-w-0 grow items-center justify-center gap-4 text-center">
-            <div className="text-5xl opacity-80">{when.replace(",", "")}</div>
+            <div className="text-5xl opacity-80">{when.replace(',', '')}</div>
             <div className="text-4xl tracking-widest opacity-70">|{zone}</div>
           </div>
           <div className="text-5xl opacity-80">{date}</div>

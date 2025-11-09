@@ -64,11 +64,15 @@ export class ScheduleMakerDB extends Dexie {
   }
 
   get timezone() {
-    return this.ensureScheduleDataRow().then((d) => d.timezone ?? DEFAULT_TIMEZONE)
+    return this.ensureScheduleDataRow().then(
+      (d) => d.timezone ?? DEFAULT_TIMEZONE
+    )
   }
 
   get exportScale() {
-    return this.ensureGlobalRow().then((g) => g.exportScale ?? DEFAULT_EXPORT_SCALE)
+    return this.ensureGlobalRow().then(
+      (g) => g.exportScale ?? DEFAULT_EXPORT_SCALE
+    )
   }
 
   get currentTemplate() {
@@ -138,8 +142,8 @@ export class ScheduleMakerDB extends Dexie {
           new Set(
             rows
               .map((r) => r.gameGraphic)
-              .filter((v): v is number => typeof v === 'number'),
-          ),
+              .filter((v): v is number => typeof v === 'number')
+          )
         )
 
         // bulk fetch images and map id -> row
@@ -162,7 +166,7 @@ export class ScheduleMakerDB extends Dexie {
         for (const d of daysOrder) {
           if (!week[d]) {
             console.warn(
-              `Missing scheduleDayPlan for day ${d}, inserting default`,
+              `Missing scheduleDayPlan for day ${d}, inserting default`
             )
             const id = await this.scheduleDayPlan.add(defaultScheduleDay(d))
             const newDay = await this.scheduleDayPlan.get(id)
@@ -285,9 +289,7 @@ export class ScheduleMakerDB extends Dexie {
 
 export interface ScheduleMakerDB extends DB {}
 export const db = new ScheduleMakerDB()
-function defaultScheduleDay(
-  d: Day,
-): import('../../dexie').DBScheduleDayPlan {
+function defaultScheduleDay(d: Day): import('../../dexie').DBScheduleDayPlan {
   return {
     day: d,
     gameName: '',

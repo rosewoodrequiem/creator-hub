@@ -1,8 +1,7 @@
 export enum ComponentKind {
-    TEXT = "text",
+  TEXT = 'text',
 }
 
 export type Components = {
-    kind: ComponentKind
-    
+  kind: ComponentKind
 }
