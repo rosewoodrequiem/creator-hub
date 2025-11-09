@@ -35,6 +35,11 @@ jobs:
         with:
           version: 10.18.0
 
+      - name: Activate pnpm via Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.18.0 --activate
+
       - run: pnpm install --frozen-lockfile
 
       # Prepend any command with "nx-cloud record --" to record its logs to Nx Cloud
