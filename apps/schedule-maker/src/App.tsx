@@ -37,7 +37,6 @@ function App() {
     if (!src) return
 
     // Ensure fonts are ready
-    // @ts-expect-error Fonts Ready API is not available in older browsers
     if (document.fonts?.ready) await document.fonts.ready
 
     try {
