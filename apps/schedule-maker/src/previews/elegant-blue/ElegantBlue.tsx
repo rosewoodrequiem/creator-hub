@@ -1,3 +1,9 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+
+import NoiseOverlay from '../../canvas/components/NoiseOverlay'
+import { useWeek } from '../../editor/hooks/useWeek'
+import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
+import { Day } from '../../types/Day'
 import {
   DAY_LABELS,
   fmtTime,
@@ -5,13 +11,9 @@ import {
   shortMonthDay,
   weekDates,
 } from '../../utils/date'
-import NoiseOverlay from '../../canvas/components/NoiseOverlay'
-import { DayCard } from './DayCard'
 import { getDaysOrderedByWeekStart } from '../../utils/days'
-import { useWeek } from '../../editor/hooks/useWeek'
-import { Day } from '../../types/Day'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
+
+import { DayCard } from './DayCard'
 
 export default function ElegantBlue({
   captureId = 'capture-root',

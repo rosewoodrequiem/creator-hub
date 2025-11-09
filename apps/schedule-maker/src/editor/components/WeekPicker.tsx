@@ -1,9 +1,9 @@
-import React from 'react'
-import { toISODate, weekDates } from '../../utils/date'
-import Button from '../ui/Button'
+import { useLiveQuery } from 'dexie-react-hooks'
+
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from '../../types/Day'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { toISODate, weekDates } from '../../utils/date'
+import Button from '../ui/Button'
 
 export default function WeekPicker() {
   const weekStart = useLiveQuery(() => db.weekStart)

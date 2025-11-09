@@ -1,7 +1,7 @@
-import React from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
+
 import { PREVIEWS } from '../../previews'
+import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import type { TemplateId } from '../../types/Template'
 
 export default function TemplatePicker() {

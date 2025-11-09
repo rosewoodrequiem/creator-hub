@@ -1,13 +1,14 @@
 import Dexie, { PromiseExtended } from 'dexie'
 import relationships from 'dexie-relationships'
 
-import { seed } from './seed'
 import { DB } from '../../dexie'
 import { Day } from '../../types/Day'
-import { Week } from '../../types/Week'
-import { emptyWeek } from './ScheduleMakerDB.helpers'
-import { ImageRow } from './SheduleMakerDB.types'
 import type { TemplateId } from '../../types/Template'
+import { Week } from '../../types/Week'
+
+import { emptyWeek } from './ScheduleMakerDB.helpers'
+import { seed } from './seed'
+import { ImageRow } from './SheduleMakerDB.types'
 
 const DB_NAME = 'schedule-maker'
 const GLOBAL_ROW_ID = 1

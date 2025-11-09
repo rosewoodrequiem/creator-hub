@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 type DayCardProps = {
   day: string
   events: string[]
 }
 
-const DayCard: React.FC<DayCardProps> = ({ day, events }) => {
+function DayCard({ day, events }: DayCardProps) {
   const [open, setOpen] = useState(true)
 
   return (

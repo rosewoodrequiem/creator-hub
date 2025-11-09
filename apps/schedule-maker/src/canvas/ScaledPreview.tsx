@@ -1,4 +1,4 @@
-import React from 'react'
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react'
 
 /**
  * Scales its child (assumed fixed-size) to fit inside the wrapper without scroll.
@@ -13,12 +13,12 @@ export default function ScaledPreview({
   targetWidth?: number
   targetHeight?: number
   margin?: number
-  children: React.ReactNode
+  children: ReactNode
 }) {
-  const wrapRef = React.useRef<HTMLDivElement>(null)
-  const [scale, setScale] = React.useState(1)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
 

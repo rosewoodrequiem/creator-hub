@@ -1,4 +1,4 @@
-import React from 'react'
+import { useRef } from 'react'
 
 type Props = {
   label: string
@@ -13,7 +13,7 @@ export default function FilePicker({
   onFile,
   buttonText = 'Select file',
 }: Props) {
-  const inputRef = React.useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   return (
     <div className="flex flex-col items-start gap-2">

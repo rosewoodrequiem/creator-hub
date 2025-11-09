@@ -1,6 +1,8 @@
 import type { FC } from 'react'
-import ElegantBlue from './elegant-blue/ElegantBlue'
+
 import type { TemplateId } from '../types/Template'
+
+import ElegantBlue from './elegant-blue/ElegantBlue'
 
 export type PreviewProps = {
   captureId?: string

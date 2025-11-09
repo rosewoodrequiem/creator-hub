@@ -1,9 +1,11 @@
-import React from 'react'
-import { DAY_LABELS, fmtTime, shortMonthDay } from '../../../utils/date'
-import Button from '../../ui/Button'
-import DayInlineEditor from './DayInlineEditor'
+import { useState } from 'react'
+
 import { Day } from '../../../types/Day'
 import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
+import { DAY_LABELS, fmtTime, shortMonthDay } from '../../../utils/date'
+import Button from '../../ui/Button'
+
+import DayInlineEditor from './DayInlineEditor'
 
 type Props = {
   dayKey: Day
@@ -24,7 +26,7 @@ export default function DayAccordion({
   onGrapicChange,
   onDisable,
 }: Props) {
-  const [open, setOpen] = React.useState(true)
+  const [open, setOpen] = useState(true)
 
   const when =
     plan.time && date ? fmtTime(date, plan.time, timezone) : 'Set time…'

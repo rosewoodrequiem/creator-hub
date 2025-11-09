@@ -1,17 +1,18 @@
-import React from 'react'
-import DayAccordion from './DayAccordion'
-import { Day } from '../../../types/Day'
-import { useWeek } from '../../hooks/useWeek'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../../../store/schedule-maker-db/ScheduleMakerDB'
-import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
+
 import { DayPlanner } from '../../../store/api/DayPlanner'
+import { db } from '../../../store/schedule-maker-db/ScheduleMakerDB'
+import { Day } from '../../../types/Day'
+import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
+import { useWeek } from '../../hooks/useWeek'
+
+import DayAccordion from './DayAccordion'
 
 interface DayEditorProps {
   days: Day[]
 }
 
-export const DayEditor: React.FC<DayEditorProps> = ({ days }) => {
+export function DayEditor({ days }: DayEditorProps) {
   const { week, getDateFromDay } = useWeek()
   const timezone = useLiveQuery(() => db.timezone)
 
