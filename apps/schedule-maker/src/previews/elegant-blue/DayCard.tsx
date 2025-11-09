@@ -15,6 +15,8 @@ export const DayCard: React.FC<DayCardProps> = ({
   zone,
   graphicUrl,
 }) => {
+  const displayName = gameName?.trim()
+  const safeName = displayName?.length ? displayName : 'Untitled Game'
   return (
     <div
       className="from-primary to-base relative grid h-[200px] grid-cols-[1fr_320px] items-center overflow-hidden overflow-visible rounded-2xl bg-linear-to-r to-50%"
@@ -25,8 +27,8 @@ export const DayCard: React.FC<DayCardProps> = ({
     >
       {/* Name Card */}
       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-        <div className="bg-primary font-body border-secondary truncate rounded-md border px-4 py-1 text-2xl font-extrabold">
-          {gameName || "Untitled Game"}
+        <div className="bg-primary font-body border-secondary rounded-md border px-4 py-1 text-2xl font-extrabold whitespace-nowrap">
+          {safeName}
         </div>
       </div>
       {/* left content */}
