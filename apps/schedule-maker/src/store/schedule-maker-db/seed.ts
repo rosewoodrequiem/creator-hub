@@ -1,7 +1,9 @@
 import { Transaction } from 'dexie'
-import { ScheduleComponent, Schedule } from './SheduleMakerDB.types'
-import { Day } from '../../types/Day'
+
 import { DBScheduleDayPlan } from '../../dexie'
+import { Day } from '../../types/Day'
+
+import { Schedule,ScheduleComponent } from './SheduleMakerDB.types'
 
 function defaultSchedule(): Schedule {
   const now = Date.now()

@@ -1,14 +1,15 @@
-import WeekPicker from './editor/components/WeekPicker'
-import SchedulePreview from './canvas/SchedulePreview'
-import TemplatePicker from './editor/components/TemplatePicker'
-import ScaledPreview from './canvas/ScaledPreview'
-import Button from './editor/ui/Button'
-import * as htmlToImage from 'html-to-image'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from './store/schedule-maker-db/ScheduleMakerDB'
-import { Day } from './types/Day'
+import * as htmlToImage from 'html-to-image'
+
+import ScaledPreview from './canvas/ScaledPreview'
+import SchedulePreview from './canvas/SchedulePreview'
 import { DayChecklist } from './editor/components/day-editor/DayChecklist'
 import { DayEditor } from './editor/components/day-editor/DayEditor'
+import TemplatePicker from './editor/components/TemplatePicker'
+import WeekPicker from './editor/components/WeekPicker'
+import Button from './editor/ui/Button'
+import { db } from './store/schedule-maker-db/ScheduleMakerDB'
+import { Day } from './types/Day'
 import { getDaysOrderedByWeekStart } from './utils/days'
 
 function App() {
@@ -36,7 +37,7 @@ function App() {
     if (!src) return
 
     // Ensure fonts are ready
-    // @ts-ignore
+    // @ts-expect-error Fonts Ready API is not available in older browsers
     if (document.fonts?.ready) await document.fonts.ready
 
     try {

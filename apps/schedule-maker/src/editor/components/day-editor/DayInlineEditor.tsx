@@ -1,6 +1,6 @@
+import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
 import Button from '../../ui/Button'
 import FilePicker from '../../ui/FilePicker'
-import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
 
 type Props = {
   plan: ScheduleDayPlan

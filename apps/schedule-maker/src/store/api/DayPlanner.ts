@@ -1,6 +1,6 @@
+import type { DBScheduleDayPlan } from '../../dexie'
 import { Day } from '../../types/Day'
 import { ScheduleDayPlan } from '../../types/SheduleDayPlan'
-import type { DBScheduleDayPlan } from '../../dexie'
 import { db } from '../schedule-maker-db/ScheduleMakerDB'
 
 export const DayPlanner = async (day: Day) => {

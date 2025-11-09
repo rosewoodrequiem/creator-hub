@@ -1,7 +1,8 @@
+import { useCallback } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from '../../types/Day'
-import { useCallback } from 'react'
 
 export const useWeek = () => {
   const week = useLiveQuery(() => db.week)

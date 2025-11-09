@@ -1,6 +1,8 @@
 // dexie-augment.d.ts
 import 'dexie'
+
 import type { Table } from 'dexie'
+
 import {
   Schedule,
   ScheduleComponent,

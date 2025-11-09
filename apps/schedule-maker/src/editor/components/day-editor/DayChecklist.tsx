@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Day } from '../../../types/Day'
+
 import { db } from '../../../store/schedule-maker-db/ScheduleMakerDB'
+import { Day } from '../../../types/Day'
 
 interface DayChecklistProps {
   days: Day[]

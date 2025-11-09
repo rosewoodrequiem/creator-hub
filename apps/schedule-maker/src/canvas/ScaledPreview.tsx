@@ -1,9 +1,4 @@
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react'
 
 /**
  * Scales its child (assumed fixed-size) to fit inside the wrapper without scroll.
