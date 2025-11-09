@@ -26,8 +26,6 @@ jobs:
       # - run: npx nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build"
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.18.0
 
       # Cache pnpm store (pnpm must already be available)
       - uses: actions/setup-node@v4
