@@ -17,7 +17,7 @@ export const DayEditor: React.FC<DayEditorProps> = ({ days }) => {
 
   const handleUpdateDayPlan = async (
     day: Day,
-    next: Partial<ScheduleDayPlan>,
+    next: Partial<ScheduleDayPlan>
   ) => {
     const dayPlanner = await DayPlanner(day)
     return dayPlanner.setPlan(next)

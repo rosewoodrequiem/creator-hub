@@ -48,7 +48,8 @@ export default function ElegantBlue({
           {/* week badge */}
           <div className="absolute top-8 left-8" style={{ maxWidth: '130px' }}>
             <div className="bg-primary rounded-xl px-4 py-3 font-semibold backdrop-blur-sm">
-              {shortMonthDay(dates[0] ?? null)} – {shortMonthDay(dates[6] ?? null)}
+              {shortMonthDay(dates[0] ?? null)} –{' '}
+              {shortMonthDay(dates[6] ?? null)}
             </div>
           </div>
 
@@ -69,10 +70,14 @@ export default function ElegantBlue({
 
               const idx = dayOrder.indexOf(key)
               const date = idx >= 0 ? dates[idx] : null
-              const when = plan.time && date
-                ? fmtTime(date, plan.time, timezone ?? undefined)
-                : 'Time TBD'
-              const zone = date && timezone ? fmtZone(date, timezone) : timezone ?? 'Local time'
+              const when =
+                plan.time && date
+                  ? fmtTime(date, plan.time, timezone ?? undefined)
+                  : 'Time TBD'
+              const zone =
+                date && timezone
+                  ? fmtZone(date, timezone)
+                  : timezone ?? 'Local time'
               const formattedDate = shortMonthDay(date ?? null)
               return (
                 <DayCard

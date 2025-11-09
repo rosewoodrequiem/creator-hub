@@ -1,4 +1,4 @@
-import React from "react"
+import React from 'react'
 
 type Props = {
   label: string
@@ -9,9 +9,9 @@ type Props = {
 
 export default function FilePicker({
   label,
-  accept = "image/*",
+  accept = 'image/*',
   onFile,
-  buttonText = "Select file",
+  buttonText = 'Select file',
 }: Props) {
   const inputRef = React.useRef<HTMLInputElement>(null)
 

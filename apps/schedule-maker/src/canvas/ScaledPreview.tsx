@@ -1,4 +1,4 @@
-import React from "react"
+import React from 'react'
 
 /**
  * Scales its child (assumed fixed-size) to fit inside the wrapper without scroll.
@@ -39,7 +39,7 @@ export default function ScaledPreview({
           width: targetWidth,
           height: targetHeight,
           transform: `scale(${scale})`,
-          transformOrigin: "top left",
+          transformOrigin: 'top left',
         }}
       >
         {children}

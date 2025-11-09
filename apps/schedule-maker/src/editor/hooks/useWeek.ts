@@ -14,20 +14,14 @@ export const useWeek = () => {
 
       const startIdx = weekStart === Day.SUN ? 0 : 1
       const diffFromStart =
-        [
-          Day.SUN,
-          Day.MON,
-          Day.TUE,
-          Day.WED,
-          Day.THU,
-          Day.FRI,
-          Day.SAT,
-        ].indexOf(day) - startIdx
+        [Day.SUN, Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT].indexOf(
+          day
+        ) - startIdx
       const date = new Date(weekAnchor)
       date.setDate(weekAnchor.getDate() + diffFromStart)
       return date
     },
-    [week, weekAnchor, weekStart],
+    [week, weekAnchor, weekStart]
   )
 
   return {

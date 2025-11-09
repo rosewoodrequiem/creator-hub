@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState } from 'react'
 
 type DayCardProps = {
   day: string
@@ -15,7 +15,7 @@ const DayCard: React.FC<DayCardProps> = ({ day, events }) => {
         onClick={() => setOpen(!open)}
       >
         <span className="font-semibold">{day}</span>
-        <span className="text-gray-500">{open ? "▼" : "▶"}</span>
+        <span className="text-gray-500">{open ? '▼' : '▶'}</span>
       </div>
       {open && (
         <div className="px-3 pb-2">

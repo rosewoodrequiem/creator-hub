@@ -1,6 +1,6 @@
-import React from "react"
+import React from 'react'
 
-type ButtonVariant = "standard" | "pill"
+type ButtonVariant = 'standard' | 'pill'
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Shape variant */
@@ -10,7 +10,7 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 }
 
 function cn(...cls: Array<string | undefined | null | false>) {
-  return cls.filter(Boolean).join(" ")
+  return cls.filter(Boolean).join(' ')
 }
 
 /**
@@ -21,17 +21,17 @@ function cn(...cls: Array<string | undefined | null | false>) {
  * - custom hover via `hoverClass`
  */
 export default function Button({
-  variant = "standard",
-  hoverClass = "hover:opacity-90",
+  variant = 'standard',
+  hoverClass = 'hover:opacity-90',
   className,
   children,
   ...rest
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center select-none gap-2 px-3 py-2 text-sm font-medium " +
-    "transition-colors duration-150 cursor-pointer " +
-    "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20"
-  const shape = variant === "pill" ? "rounded-full" : "rounded-lg"
+    'inline-flex items-center justify-center select-none gap-2 px-3 py-2 text-sm font-medium ' +
+    'transition-colors duration-150 cursor-pointer ' +
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20'
+  const shape = variant === 'pill' ? 'rounded-full' : 'rounded-lg'
 
   return (
     <button className={cn(base, shape, hoverClass, className)} {...rest}>
