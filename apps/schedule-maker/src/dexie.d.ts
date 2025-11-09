@@ -19,10 +19,12 @@ type Images = {
 type Global = {
   id?: number
   currentScheduleId: number | null // FK to schedules.id
+  exportScale: number
+  sidebarOpen: boolean
 }
 
 type DBScheduleDayPlan = {
-  id: number
+  id?: number
   gameName: string
   day: Day
   time: string
@@ -33,7 +35,7 @@ type DBScheduleDayPlan = {
 type ScheduleData = {
   id?: number
   weekStart: Day
-  weekAnchor?: Date
+  weekAnchor: Date
   timezone?: string
   heroUrl?: number // FK -> images.id
 }

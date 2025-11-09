@@ -57,11 +57,17 @@ const defaultSchedulePlan = () => [
 ]
 
 const defaultScheduleData = () => ({
+  id: 1,
   weekStart: Day.MON,
+  weekAnchor: new Date(),
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
 })
 
 const defaultGlobal = (scheduleId: number) => ({
+  id: 1,
   currentScheduleId: scheduleId,
+  exportScale: 2,
+  sidebarOpen: true,
 })
 
 export async function seed(transaction: Transaction) {
@@ -81,39 +87,3 @@ export async function seed(transaction: Transaction) {
   return scheduleId
 }
 
-/*export async function ensureSeed(): Promise<string> {
-  // Step 1: check if a current schedule is saved
-  const currentId = localStorage.getItem(CURRENT_SCHEDULE_KEY)
-  if (currentId) {
-    const found = await db.schedules.get(currentId)
-    if (found) {
-      const compCount = await db.components
-        .where({ scheduleId: currentId })
-        .count()
-      if (compCount > 0) return currentId // all good
-    }
-  }
-
-  // Step 2: fall back to first existing schedule
-  const first = await db.schedules.toCollection().first()
-  if (first) {
-    const compCount = await db.components
-      .where({ scheduleId: first.id })
-      .count()
-    if (compCount === 0) {
-      await db.components.bulkPut(defaultComponents(first.id))
-    }
-    localStorage.setItem(CURRENT_SCHEDULE_KEY, first.id)
-    return first.id
-  }
-
-  // Step 3: seed brand-new default
-  const schedule = defaultSchedule()
-  //const comps = defaultComponents(schedule.id)
-  await db.transaction("rw", db.schedules, db.components, async () => {
-    await db.schedules.put(schedule)
-    //await db.components.bulkPut(comps)
-  })
-  localStorage.setItem(CURRENT_SCHEDULE_KEY, schedule.id)
-  return schedule.id
-}*/

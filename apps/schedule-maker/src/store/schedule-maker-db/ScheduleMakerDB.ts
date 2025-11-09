@@ -7,9 +7,15 @@ import { Day } from '../../types/Day'
 import { Week } from '../../types/Week'
 import { emptyWeek } from './ScheduleMakerDB.helpers'
 import { ImageRow } from './SheduleMakerDB.types'
+import type { TemplateId } from '../../types/Template'
 
 const DB_NAME = 'schedule-maker'
-export const CURRENT_SCHEDULE_KEY = 'currentScheduleId'
+const GLOBAL_ROW_ID = 1
+const SCHEDULE_DATA_ROW_ID = 1
+const DEFAULT_TEMPLATE: TemplateId = 'ElegantBlue'
+const DEFAULT_EXPORT_SCALE = 2
+const DEFAULT_TIMEZONE =
+  Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
 export class ScheduleMakerDB extends Dexie {
   constructor() {
@@ -18,7 +24,7 @@ export class ScheduleMakerDB extends Dexie {
     this.version(1).stores({
       images: '++id',
       schedules: '++id, name, updatedAt',
-      scheduleData: '++id, weekStart, weekOffset, timezone, heroUrl',
+      scheduleData: '++id, weekStart, weekAnchor, timezone, heroUrl',
       scheduleDayPlan:
         '++id, day, gameName, time, gameGraphic -> images.id, enabled',
       components: '++id, scheduleId -> schedules.id, kind, zIndex, updatedAt',
@@ -39,26 +45,73 @@ export class ScheduleMakerDB extends Dexie {
   }
 
   get scheduleId() {
-    return this.global.get(1).then((g) => g?.currentScheduleId ?? null)
+    return this.ensureCurrentScheduleId()
   }
 
   get weekStart() {
-    return this.scheduleData.get(1).then((d) => d?.weekStart ?? Day.MON)
+    return this.ensureScheduleDataRow().then((d) => d.weekStart ?? Day.MON)
   }
   get weekAnchor() {
-    return this.scheduleData.get(1).then((d) => d?.weekAnchor ?? new Date())
+    return this.ensureScheduleDataRow().then((d) => d.weekAnchor ?? new Date())
   }
 
   get heroUrl() {
-    return this.scheduleData.get(1).then((d) => {
-      const imageId = d?.heroUrl
+    return this.ensureScheduleDataRow().then((d) => {
+      const imageId = d.heroUrl
       if (!imageId) return undefined
       return this.images.get(imageId).then((img) => img?.data)
     })
   }
 
   get timezone() {
-    return this.scheduleData.get(1).then((d) => d?.timezone)
+    return this.ensureScheduleDataRow().then((d) => d.timezone ?? DEFAULT_TIMEZONE)
+  }
+
+  get exportScale() {
+    return this.ensureGlobalRow().then((g) => g.exportScale ?? DEFAULT_EXPORT_SCALE)
+  }
+
+  get currentTemplate() {
+    return this.ensureCurrentScheduleId().then(async (id) => {
+      if (!id) return DEFAULT_TEMPLATE
+      const schedule = await this.schedules.get(id)
+      return schedule?.themeId ?? DEFAULT_TEMPLATE
+    })
+  }
+
+  async setWeekStart(day: Day) {
+    const data = await this.ensureScheduleDataRow()
+    await this.scheduleData.put({ ...data, weekStart: day })
+  }
+
+  async setWeekAnchor(anchor: Date) {
+    const data = await this.ensureScheduleDataRow()
+    await this.scheduleData.put({ ...data, weekAnchor: new Date(anchor) })
+  }
+
+  async setExportScale(scale: number) {
+    const global = await this.ensureGlobalRow()
+    await this.global.put({ ...global, exportScale: scale })
+  }
+
+  async setCurrentTemplate(template: TemplateId) {
+    const scheduleId = await this.ensureCurrentScheduleId()
+    if (!scheduleId) throw new Error('No schedule available to update')
+    await this.schedules.update(scheduleId, {
+      themeId: template,
+      updatedAt: Date.now(),
+    })
+  }
+
+  async setHeroImage(file: File | null) {
+    const data = await this.ensureScheduleDataRow()
+    if (file) {
+      const id = await this.uploadImage(file)
+      await this.scheduleData.put({ ...data, heroUrl: id })
+      return
+    }
+
+    await this.scheduleData.put({ ...data, heroUrl: undefined })
   }
 
   /**
@@ -155,10 +208,90 @@ export class ScheduleMakerDB extends Dexie {
       reader.readAsDataURL(file)
     })
   }
+
+  private async ensureGlobalRow() {
+    let row = await this.global.get(GLOBAL_ROW_ID)
+    let needsUpdate = false
+    if (!row) {
+      row = {
+        id: GLOBAL_ROW_ID,
+        currentScheduleId: null,
+        exportScale: DEFAULT_EXPORT_SCALE,
+        sidebarOpen: true,
+      }
+      needsUpdate = true
+    } else {
+      const next = { ...row }
+      if (typeof next.exportScale !== 'number') {
+        next.exportScale = DEFAULT_EXPORT_SCALE
+        needsUpdate = true
+      }
+      if (typeof next.sidebarOpen !== 'boolean') {
+        next.sidebarOpen = true
+        needsUpdate = true
+      }
+      row = next
+    }
+
+    if (needsUpdate) await this.global.put(row)
+    return row
+  }
+
+  private async ensureScheduleDataRow() {
+    let row = await this.scheduleData.get(SCHEDULE_DATA_ROW_ID)
+    let needsUpdate = false
+    if (!row) {
+      row = {
+        id: SCHEDULE_DATA_ROW_ID,
+        weekStart: Day.MON,
+        weekAnchor: new Date(),
+        timezone: DEFAULT_TIMEZONE,
+      }
+      needsUpdate = true
+    } else {
+      const next = { ...row }
+      if (!next.weekStart) {
+        next.weekStart = Day.MON
+        needsUpdate = true
+      }
+      if (!next.weekAnchor) {
+        next.weekAnchor = new Date()
+        needsUpdate = true
+      }
+      if (!next.timezone) {
+        next.timezone = DEFAULT_TIMEZONE
+        needsUpdate = true
+      }
+      row = next
+    }
+
+    if (needsUpdate) await this.scheduleData.put(row)
+    return row
+  }
+
+  private async ensureCurrentScheduleId(): Promise<number | null> {
+    const global = await this.ensureGlobalRow()
+    if (global.currentScheduleId) return global.currentScheduleId
+
+    const fallback = await this.schedules.toCollection().first()
+    if (fallback?.id != null) {
+      await this.global.put({ ...global, currentScheduleId: fallback.id })
+      return fallback.id
+    }
+
+    return null
+  }
 }
 
 export interface ScheduleMakerDB extends DB {}
 export const db = new ScheduleMakerDB()
-function defaultScheduleDay(d: Day): import('../../dexie').DBScheduleDayPlan {
-  throw new Error('Function not implemented.')
+function defaultScheduleDay(
+  d: Day,
+): import('../../dexie').DBScheduleDayPlan {
+  return {
+    day: d,
+    gameName: '',
+    time: '',
+    enabled: false,
+  }
 }

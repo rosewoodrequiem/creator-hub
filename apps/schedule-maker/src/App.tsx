@@ -4,30 +4,32 @@ import TemplatePicker from './editor/components/TemplatePicker'
 import ScaledPreview from './canvas/ScaledPreview'
 import Button from './editor/ui/Button'
 import * as htmlToImage from 'html-to-image'
-import { useConfig } from './store/useConfig'
-import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from './types/Day'
 import { DayChecklist } from './editor/components/day-editor/DayChecklist'
 import { DayEditor } from './editor/components/day-editor/DayEditor'
-import { ScheduleData } from './store/api/ScheduleData'
+import { getDaysOrderedByWeekStart } from './utils/days'
 
 function App() {
   const weekStart = useLiveQuery(() => db.weekStart)
-  const exportScale = useConfig((s) => s.exportScale)
-  const setExportScale = useConfig((s) => s.setExportScale)
-  const setHeroUrl = useConfig((s) => s.setHeroUrl)
+  const exportScale = useLiveQuery(() => db.exportScale) ?? 2
 
-  const handleUploadHero = async (file: File) => {
-    const scheuldeData = await ScheduleData()
-    scheuldeData?.setHeroUrl(file)
+  if (!weekStart) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="animate-pulse rounded bg-gray-200 p-4 text-gray-400">
+          Loading…
+        </div>
+      </div>
+    )
   }
 
-  const dayOrder: Day[] =
-    weekStart === Day.SUN.toLowerCase()
-      ? [Day.SUN, Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT]
-      : [Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT, Day.SUN]
+  const dayOrder: Day[] = getDaysOrderedByWeekStart(weekStart)
+
+  const handleUploadHero = async (file?: File | null) => {
+    await db.setHeroImage(file ?? null)
+  }
 
   async function handleExport() {
     const src = document.getElementById('capture-root')
@@ -40,7 +42,7 @@ function App() {
     try {
       const pixelRatio = Math.max(window.devicePixelRatio || 1, 2)
       const dataUrl = await htmlToImage.toPng(src, {
-        pixelRatio: Math.min(4, pixelRatio * 2), // 3–4 looks great
+        pixelRatio: Math.min(4, pixelRatio * exportScale),
         cacheBust: true,
         style: { imageRendering: '' },
         // If you need to omit debug elements, you can filter nodes:
@@ -85,7 +87,12 @@ function App() {
               min={1}
               max={4}
               value={exportScale}
-              onChange={(e) => setExportScale(Number(e.target.value))}
+              onChange={async (e) => {
+                const next = Number(e.target.value)
+                if (Number.isFinite(next)) {
+                  await db.setExportScale(Math.min(4, Math.max(1, next)))
+                }
+              }}
               className="ml-2 w-20 rounded-lg border px-2 py-1"
             />
           </label>
@@ -118,12 +125,16 @@ function App() {
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0]
-                handleUploadHero(f!)
+                if (f) {
+                  void handleUploadHero(f)
+                }
               }}
             />
             <Button
               className="border bg-white hover:bg-[#f3f4f6]"
-              onClick={() => setHeroUrl(undefined)}
+              onClick={() => {
+                void handleUploadHero(null)
+              }}
             >
               Clear
             </Button>
@@ -143,35 +154,4 @@ function App() {
   )
 }
 
-export default () => {
-  const [hydrated, setHydrated] = useState(false)
-
-  useEffect(() => {
-    // Note: This is just in case you want to take into account manual rehydration.
-    // You can remove the following line if you don't need it.
-    const unsubHydrate = useConfig.persist.onHydrate(() => setHydrated(false))
-
-    const unsubFinishHydration = useConfig.persist.onFinishHydration(() =>
-      setHydrated(true),
-    )
-
-    setHydrated(useConfig.persist.hasHydrated())
-
-    return () => {
-      unsubHydrate()
-      unsubFinishHydration()
-    }
-  }, [])
-
-  if (!hydrated) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="animate-pulse rounded bg-gray-200 p-4 text-gray-400">
-          Loading…
-        </div>
-      </div>
-    )
-  }
-
-  return <App />
-}
+export default App

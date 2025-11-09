@@ -1,5 +1,6 @@
 import { Day } from '../../types/Day'
 import { ScheduleDayPlan } from '../../types/SheduleDayPlan'
+import type { DBScheduleDayPlan } from '../../dexie'
 import { db } from '../schedule-maker-db/ScheduleMakerDB'
 
 export const DayPlanner = async (day: Day) => {
@@ -11,19 +12,26 @@ export const DayPlanner = async (day: Day) => {
   const setPlan = async (plan: Partial<ScheduleDayPlan>) => {
     if (!plan) return
 
-    await db.scheduleDayPlan.update(dayPlan.id, plan)
+    const { gameGraphic, ...rest } = plan
+    const update: Partial<DBScheduleDayPlan> = { ...rest }
+
+    if (typeof gameGraphic === 'number') {
+      update.gameGraphic = gameGraphic
+    }
+
+    await db.scheduleDayPlan.update(dayPlan.id!, update)
   }
 
   const setGameGraphic = async (file: File | null) => {
     if (file) {
       const id = await db.uploadImage(file)
 
-      await await db.scheduleDayPlan.update(dayPlan.id, {
+      await db.scheduleDayPlan.update(dayPlan.id!, {
         gameGraphic: id,
       })
     } else {
       // Remove existing graphic
-      await db.scheduleDayPlan.update(dayPlan.id, {
+      await db.scheduleDayPlan.update(dayPlan.id!, {
         gameGraphic: undefined,
       })
     }

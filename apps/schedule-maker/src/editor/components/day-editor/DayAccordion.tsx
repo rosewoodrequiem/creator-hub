@@ -10,7 +10,7 @@ type Props = {
   date: Date | null
   plan: ScheduleDayPlan
   timezone?: string
-  onChange: (next: ScheduleDayPlan) => void
+  onChange: (next: Partial<ScheduleDayPlan>) => void
   onGrapicChange: (file?: File) => void
   onDisable: () => void
 }

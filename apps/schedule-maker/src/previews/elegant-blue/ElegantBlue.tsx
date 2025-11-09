@@ -1,4 +1,3 @@
-import { useConfig } from '../../store/useConfig'
 import {
   DAY_LABELS,
   fmtTime,
@@ -20,15 +19,13 @@ export default function ElegantBlue({
   captureId?: string
 }) {
   const { week, weekStart, weekAnchor } = useWeek()
-  const hero = useLiveQuery(() => {
-    db.heroUrl
-  })
+  const hero = useLiveQuery(() => db.heroUrl)
+  const timezone = useLiveQuery(() => db.timezone)
 
   const dayOrder = getDaysOrderedByWeekStart(weekStart ?? Day.MON)
 
   const dates = weekAnchor && weekStart ? weekDates(weekAnchor, weekStart) : []
-  //TODO: Handle enabled cards
-  const enabledKeys = [] //dayOrder.filter((k) => week.days[k].enabled)
+  const enabledKeys = dayOrder.filter((k) => week?.[k]?.enabled)
 
   return (
     <div className="elegant-blue-theme">
@@ -51,7 +48,7 @@ export default function ElegantBlue({
           {/* week badge */}
           <div className="absolute top-8 left-8" style={{ maxWidth: '130px' }}>
             <div className="bg-primary rounded-xl px-4 py-3 font-semibold backdrop-blur-sm">
-              {shortMonthDay(dates[0])} – {shortMonthDay(dates[6])}
+              {shortMonthDay(dates[0] ?? null)} – {shortMonthDay(dates[6] ?? null)}
             </div>
           </div>
 
@@ -67,14 +64,16 @@ export default function ElegantBlue({
             )}
 
             {enabledKeys.map((key) => {
-              const plan = week.days[key]
+              const plan = week?.[key]
+              if (!plan) return null
+
               const idx = dayOrder.indexOf(key)
-              const date = dates[idx]
-              const when = plan.time
-                ? fmtTime(date, plan.time, plan.timezone)
+              const date = idx >= 0 ? dates[idx] : null
+              const when = plan.time && date
+                ? fmtTime(date, plan.time, timezone ?? undefined)
                 : 'Time TBD'
-              const zone = fmtZone(date, plan.timezone)
-              const formattedDate = shortMonthDay(date)
+              const zone = date && timezone ? fmtZone(date, timezone) : timezone ?? 'Local time'
+              const formattedDate = shortMonthDay(date ?? null)
               return (
                 <DayCard
                   key={key}
@@ -83,8 +82,7 @@ export default function ElegantBlue({
                   when={when}
                   date={formattedDate}
                   zone={zone}
-                  logoUrl={plan.logoUrl}
-                  graphicUrl={plan.graphicUrl}
+                  graphicUrl={plan.gameGraphic}
                 />
               )
             })}

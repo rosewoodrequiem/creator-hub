@@ -1,15 +1,4 @@
-import type { DayKey } from '../types'
 import { Day } from '../types/Day'
-
-export const DAY_KEYS: DayKey[] = [
-  'sun',
-  'mon',
-  'tue',
-  'wed',
-  'thu',
-  'fri',
-  'sat',
-]
 export const DAY_LABELS: Record<Day, string> = {
   [Day.SUN]: 'Sunday',
   [Day.MON]: 'Monday',
@@ -29,8 +18,8 @@ export function startOfWeek(d: Date, weekStart: Day) {
   return s
 }
 
-export function weekDates(anchorISO: Date, weekStart: Day) {
-  const anchor = new Date(anchorISO)
+export function weekDates(anchorDate: Date, weekStart: Day) {
+  const anchor = new Date(anchorDate)
   const start = startOfWeek(anchor, weekStart)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start)

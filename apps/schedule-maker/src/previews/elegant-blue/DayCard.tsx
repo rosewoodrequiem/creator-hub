@@ -5,7 +5,6 @@ interface DayCardProps {
   zone: string
   gameName: string
   graphicUrl?: string
-  logoUrl?: string
 }
 
 export const DayCard: React.FC<DayCardProps> = ({
@@ -15,7 +14,6 @@ export const DayCard: React.FC<DayCardProps> = ({
   date,
   zone,
   graphicUrl,
-  logoUrl,
 }) => {
   return (
     <div

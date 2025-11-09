@@ -1,4 +1,5 @@
 import { ScheduleDayPlan } from '../../types/SheduleDayPlan'
+import { TemplateId } from '../../types/Template'
 
 export type ComponentKind =
   | 'game-slot'
@@ -12,15 +13,15 @@ export type Vec2 = { x: number; y: number }
 export type Size = { w: number; h: number }
 
 export type Schedule = {
-  id?: string // uuid
+  id?: number
   name: string
-  createdAt: number // Date.now()
+  createdAt: number
   updatedAt: number
-  themeId?: string // optional UI theme reference
+  themeId: TemplateId
 }
 
 export type ScheduleComponent = {
-  id?: string // uuid
+  id?: number
   scheduleId: number // FK -> Schedule.id
   kind: ComponentKind
   position: Vec2 // top-left (px)

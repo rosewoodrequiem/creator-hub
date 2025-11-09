@@ -29,7 +29,7 @@ export const DayChecklist: React.FunctionComponent<DayChecklistProps> = ({
               <input
                 type="checkbox"
                 className="peer sr-only"
-                checked={enabled}
+                checked={Boolean(enabled)}
                 onChange={(e) => handleToggleDay(key, e.target.checked)}
               />
               <span className="text-sm">{key}</span>
