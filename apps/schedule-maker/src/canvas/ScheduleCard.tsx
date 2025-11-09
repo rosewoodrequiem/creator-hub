@@ -1,4 +1,4 @@
-import React from 'react'
+import type { Ref } from 'react'
 
 export type ScheduleData = {
   title: string
@@ -11,7 +11,7 @@ export type ScheduleData = {
 type Props = {
   data: ScheduleData
   /** Attach this ref to the outermost capture node */
-  captureRef?: React.Ref<HTMLDivElement>
+  captureRef?: Ref<HTMLDivElement>
 }
 
 export default function ScheduleCard({ data, captureRef }: Props) {

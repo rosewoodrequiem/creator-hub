@@ -1,4 +1,3 @@
-import { ScheduleDayPlan } from '../../types/SheduleDayPlan'
 import { TemplateId } from '../../types/Template'
 
 export type ComponentKind =

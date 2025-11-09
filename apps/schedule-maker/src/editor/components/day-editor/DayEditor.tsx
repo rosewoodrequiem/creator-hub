@@ -1,4 +1,3 @@
-import React from 'react'
 import DayAccordion from './DayAccordion'
 import { Day } from '../../../types/Day'
 import { useWeek } from '../../hooks/useWeek'
@@ -11,7 +10,7 @@ interface DayEditorProps {
   days: Day[]
 }
 
-export const DayEditor: React.FC<DayEditorProps> = ({ days }) => {
+export function DayEditor({ days }: DayEditorProps) {
   const { week, getDateFromDay } = useWeek()
   const timezone = useLiveQuery(() => db.timezone)
 

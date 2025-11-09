@@ -1,12 +1,13 @@
-import React from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 type ButtonVariant = 'standard' | 'pill'
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Shape variant */
   variant?: ButtonVariant
   /** Tailwind hover classes, e.g. "hover:bg-black/80" or "hover:bg-[--color-brand]" */
   hoverClass?: string
+  children?: ReactNode
 }
 
 function cn(...cls: Array<string | undefined | null | false>) {

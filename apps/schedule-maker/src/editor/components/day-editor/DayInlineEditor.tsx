@@ -1,4 +1,3 @@
-import React from 'react'
 import Button from '../../ui/Button'
 import FilePicker from '../../ui/FilePicker'
 import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'

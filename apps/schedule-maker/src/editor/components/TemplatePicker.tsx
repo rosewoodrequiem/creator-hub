@@ -1,4 +1,3 @@
-import React from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import { PREVIEWS } from '../../previews'

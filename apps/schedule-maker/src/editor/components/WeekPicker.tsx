@@ -1,4 +1,3 @@
-import React from 'react'
 import { toISODate, weekDates } from '../../utils/date'
 import Button from '../ui/Button'
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'

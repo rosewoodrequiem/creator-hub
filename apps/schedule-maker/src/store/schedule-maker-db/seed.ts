@@ -39,14 +39,14 @@ function defaultComponents(scheduleId: number): ScheduleComponent[] {
   ]
 }
 
-const defaultScheduleDay = (day: Day): Omit<DBScheduleDayPlan, 'id'> => ({
+const defaultScheduleDay = (day: Day): DBScheduleDayPlan => ({
   gameName: '',
   day,
   time: '',
   enabled: false,
 })
 
-const defaultSchedulePlan = () => [
+const defaultSchedulePlan = (): DBScheduleDayPlan[] => [
   defaultScheduleDay(Day.MON),
   defaultScheduleDay(Day.TUE),
   defaultScheduleDay(Day.WED),
@@ -80,7 +80,6 @@ export async function seed(transaction: Transaction) {
   const global = defaultGlobal(scheduleId)
 
   await transaction.scheduleData.put(scheduleData)
-  //@ts-expect-error id will be auto-assigned
   await transaction.scheduleDayPlan.bulkPut(scheduleDayPlan)
   await transaction.components.bulkPut(comps)
   await transaction.global.put(global)

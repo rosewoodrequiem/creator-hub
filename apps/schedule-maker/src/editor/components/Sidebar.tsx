@@ -1,4 +1,3 @@
-import React from 'react'
 import DayCard from './day-editor/DayCard'
 
 const Sidebar = () => {

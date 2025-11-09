@@ -1,5 +1,3 @@
-import React from 'react'
-
 /**
  * Very light, tiling noise overlay (transparent). Improves gradient banding in exports.
  * The data URI is a tiny 64x64 PNG with soft monochrome noise.
