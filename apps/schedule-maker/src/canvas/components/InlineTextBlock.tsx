@@ -1,7 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type Descendant, Node, createEditor } from 'slate'
+import {
+  Editor,
+  Range,
+  Text,
+  Transforms,
+  type Descendant,
+  Node,
+  createEditor,
+} from 'slate'
 import { withHistory } from 'slate-history'
-import { Editable, ReactEditor, Slate, withReact } from 'slate-react'
+import {
+  Editable,
+  ReactEditor,
+  Slate,
+  withReact,
+  type RenderLeafProps,
+} from 'slate-react'
 
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import type {
@@ -49,6 +63,13 @@ type InlineTextBlockProps = {
   theme: Theme
 }
 
+type InlineLeafStyle = {
+  fontSize?: number
+  fontId?: string
+  colorToken?: string
+  colorValue?: string
+}
+
 export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   const selectedComponentId = useCanvasStore(
     (state) => state.selectedComponentId,
@@ -58,7 +79,9 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   const isSelected = selectedComponentId === component.id
   const editor = useMemo(() => withHistory(withReact(createEditor())), [])
   const [draft, setDraft] = useState<Descendant[]>(() =>
-    fromPlainText(component.props.text),
+    cloneDescendants(
+      component.props.richText ?? fromPlainText(component.props.text),
+    ),
   )
   const [editorKey, setEditorKey] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
@@ -67,7 +90,14 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   >(null)
   const [dirty, setDirty] = useState(false)
   const [styleDirty, setStyleDirty] = useState(false)
-  const [displayText, setDisplayText] = useState(component.props.text ?? '')
+  const [displayNodes, setDisplayNodes] = useState<Descendant[]>(() =>
+    cloneDescendants(
+      component.props.richText ?? fromPlainText(component.props.text),
+    ),
+  )
+  const [displayText, setDisplayText] = useState(
+    () => component.props.text ?? '',
+  )
   const [styleState, setStyleState] = useState(() => ({
     fontSize: component.props.fontSize,
     colorToken: component.props.colorToken,
@@ -75,23 +105,70 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   }))
   const colorInputRef = useRef<HTMLInputElement>(null)
   const toolbarPointerRef = useRef(false)
+  const autosaveTimeoutRef = useRef<number | null>(null)
+  const lastSyncedTextRef = useRef(component.props.text ?? '')
+  const lastSyncedRichRef = useRef(serializeRichText(component.props.richText))
+  const pendingSyncRef = useRef(false)
 
   const persistDraft = useCallback(async () => {
     if (!component.id || !dirty) return
     const nextText = toPlainText(draft)
-    if (nextText !== component.props.text) {
-      await db.updateComponentProps(component.id, 'text', { text: nextText })
+    const serializedDraft = cloneDescendants(draft)
+    const nextRichTextString = JSON.stringify(serializedDraft)
+    const currentRichTextString = JSON.stringify(
+      component.props.richText ?? null,
+    )
+
+    if (
+      nextText !== component.props.text ||
+      nextRichTextString !== currentRichTextString
+    ) {
+      await db.updateComponentProps(component.id, 'text', {
+        text: nextText,
+        richText: serializedDraft,
+      })
+      lastSyncedTextRef.current = nextText
+      lastSyncedRichRef.current = nextRichTextString
+      pendingSyncRef.current = true
     }
     setDirty(false)
-  }, [component.id, component.props.text, dirty, draft])
+  }, [component.id, component.props.text, component.props.richText, dirty, draft])
+
+  const serializedRichText = useMemo(
+    () => serializeRichText(component.props.richText),
+    [component.props.richText],
+  )
 
   useEffect(() => {
     if (dirty) return
-    const next = fromPlainText(component.props.text)
-    setDraft(next)
+    const incomingText = component.props.text ?? ''
+
+    if (pendingSyncRef.current) {
+      if (
+        incomingText === lastSyncedTextRef.current &&
+        serializedRichText === lastSyncedRichRef.current
+      ) {
+        pendingSyncRef.current = false
+      }
+      return
+    }
+
+    if (
+      incomingText === lastSyncedTextRef.current &&
+      serializedRichText === lastSyncedRichRef.current
+    ) {
+      return
+    }
+    const next =
+      component.props.richText ?? fromPlainText(component.props.text)
+    const cloned = cloneDescendants(next)
+    lastSyncedTextRef.current = incomingText
+    lastSyncedRichRef.current = serializedRichText
+    setDraft(cloned)
+    setDisplayNodes(cloned)
     setEditorKey((key) => key + 1)
-    setDisplayText(component.props.text ?? '')
-  }, [component.props.text, dirty])
+    setDisplayText(toPlainText(cloned))
+  }, [component.props.text, serializedRichText, dirty])
 
   useEffect(() => {
     if (styleDirty) {
@@ -144,17 +221,76 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     return
   }, [isSelected, isFocused, dirty, persistDraft])
 
+  useEffect(() => {
+    if (!dirty) {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current)
+        autosaveTimeoutRef.current = null
+      }
+      return
+    }
+
+    autosaveTimeoutRef.current = window.setTimeout(() => {
+      autosaveTimeoutRef.current = null
+      void persistDraft()
+    }, 1000)
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current)
+        autosaveTimeoutRef.current = null
+      }
+    }
+  }, [dirty, persistDraft])
+
   const handleSlateChange = useCallback((nextValue: Descendant[]) => {
     const nextText = toPlainText(nextValue)
     setDraft(nextValue)
     setDirty(true)
+     setDisplayNodes(nextValue)
     setDisplayText(nextText)
     setStyleState((prev) => ({ ...prev }))
   }, [])
 
+  const applyInlineStyle = useCallback(
+    (
+      style: InlineLeafStyle,
+      options?: { clear?: (keyof InlineLeafStyle)[] },
+    ) => {
+      if (!editor.selection || !Range.isExpanded(editor.selection)) return false
+      options?.clear?.forEach((key) => {
+        Transforms.unsetNodes(editor, key as string, {
+          match: Text.isText,
+          split: true,
+        })
+      })
+      Transforms.setNodes(editor, style, {
+        match: Text.isText,
+        split: true,
+      })
+      return true
+    },
+    [editor],
+  )
+
   const applyPreset = (presetId: string) => {
     const preset = STYLE_PRESETS.find((style) => style.id === presetId)
     if (!preset || !component.id) return
+
+    if (
+      applyInlineStyle(
+        {
+          fontSize: preset.fontSize,
+          fontId: preset.fontId,
+          colorToken: preset.colorToken,
+        },
+        { clear: ['colorValue'] },
+      )
+    ) {
+      setActiveMenu(null)
+      return
+    }
+
     setStyleState({
       fontSize: preset.fontSize,
       colorToken: preset.colorToken,
@@ -171,6 +307,10 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
 
   const applyFontSize = (size: number) => {
     if (!component.id) return
+    if (applyInlineStyle({ fontSize: size })) {
+      setActiveMenu(null)
+      return
+    }
     setStyleState((prev) => ({ ...prev, fontSize: size }))
     setStyleDirty(true)
     void db.updateComponentProps(component.id, 'text', { fontSize: size })
@@ -179,6 +319,10 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
 
   const applyThemeColor = (tokenId: string) => {
     if (!component.id) return
+    if (applyInlineStyle({ colorToken: tokenId }, { clear: ['colorValue'] })) {
+      setActiveMenu(null)
+      return
+    }
     setStyleState((prev) => ({ ...prev, colorToken: tokenId }))
     setStyleDirty(true)
     void db.updateComponentProps(component.id, 'text', { colorToken: tokenId })
@@ -187,6 +331,10 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
 
   const applyCustomColor = (color: string) => {
     if (!component.id) return
+    if (applyInlineStyle({ colorValue: color }, { clear: ['colorToken'] })) {
+      setActiveMenu(null)
+      return
+    }
     setStyleState((prev) => ({ ...prev, colorToken: color }))
     setStyleDirty(true)
     void db.updateComponentProps(component.id, 'text', { colorToken: color })
@@ -224,7 +372,15 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
           if (component.id) selectComponent(component.id)
         }}
       >
-        <span>{displayText || 'Click to edit text'}</span>
+        {displayText ? (
+          <RichTextPreview
+            value={displayNodes}
+            theme={theme}
+            baseStyle={styleState}
+          />
+        ) : (
+          <span>Click to edit text</span>
+        )}
       </div>
     )
   }
@@ -389,7 +545,13 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
               setIsFocused(false)
               setActiveMenu(null)
             }}
-            renderLeaf={(props) => <Leaf {...props} />}
+            renderLeaf={(leafProps) => (
+              <Leaf
+                {...leafProps}
+                theme={theme}
+                baseStyle={styleState}
+              />
+            )}
           />
         </div>
         <input
@@ -451,18 +613,97 @@ function ToolbarMenu({ children }: { children: React.ReactNode }) {
   return <div className="space-y-1">{children}</div>
 }
 
-function Leaf({
-  attributes,
-  children,
-}: {
-  attributes: Record<string, unknown>
-  children: React.ReactNode
-}) {
+type LeafComponentProps = RenderLeafProps & {
+  theme: Theme
+  baseStyle: {
+    fontSize: number
+    colorToken: string
+    fontId: string
+  }
+}
+
+type InlineLeaf = Text & InlineLeafStyle
+
+function Leaf({ attributes, children, leaf, theme, baseStyle }: LeafComponentProps) {
+  const resolvedFontId = (leaf.fontId as string | undefined) ?? baseStyle.fontId
+  const resolvedFontSize =
+    (leaf.fontSize as number | undefined) ?? baseStyle.fontSize
+  const colorToken =
+    (leaf.colorToken as string | undefined) ?? baseStyle.colorToken
+  const colorValue = leaf.colorValue as string | undefined
+  const fontFamily = resolveThemeFont(theme, resolvedFontId, 'Poppins, sans-serif')
+  const color = colorValue
+    ? colorValue
+    : resolveThemeColor(theme, colorToken, '#0f172a')
+
   return (
-    <span {...attributes} className="whitespace-pre-wrap">
+    <span
+      {...attributes}
+      className="whitespace-pre-wrap"
+      style={{ fontFamily, fontSize: resolvedFontSize, color }}
+    >
       {children}
     </span>
   )
+}
+
+function RichTextPreview({
+  value,
+  theme,
+  baseStyle,
+}: {
+  value: Descendant[]
+  theme: Theme
+  baseStyle: LeafComponentProps['baseStyle']
+}) {
+  return (
+    <>
+      {value.map((node, index) => (
+        <RichNode key={index} node={node} theme={theme} baseStyle={baseStyle} />
+      ))}
+    </>
+  )
+}
+
+function RichNode({
+  node,
+  theme,
+  baseStyle,
+}: {
+  node: Descendant
+  theme: Theme
+  baseStyle: LeafComponentProps['baseStyle']
+}): JSX.Element | null {
+  if (Text.isText(node)) {
+    return (
+      <Leaf
+        attributes={{}}
+        leaf={node as InlineLeaf}
+        theme={theme}
+        baseStyle={baseStyle}
+      >
+        {node.text}
+      </Leaf>
+    )
+  }
+
+  if ('children' in node) {
+    const children = node.children?.map((child, index) => (
+      <RichNode
+        key={index}
+        node={child as Descendant}
+        theme={theme}
+        baseStyle={baseStyle}
+      />
+    ))
+
+    if ((node as any).type === 'paragraph') {
+      return <span className="block whitespace-pre-wrap">{children}</span>
+    }
+    return <span className="whitespace-pre-wrap">{children}</span>
+  }
+
+  return null
 }
 
 function fromPlainText(text?: string): Descendant[] {
@@ -477,4 +718,12 @@ function fromPlainText(text?: string): Descendant[] {
 
 function toPlainText(value: Descendant[]) {
   return value.map((node) => Node.string(node)).join('\n')
+}
+
+function cloneDescendants(value: Descendant[]): Descendant[] {
+  return JSON.parse(JSON.stringify(value)) as Descendant[]
+}
+
+function serializeRichText(value?: Descendant[] | null) {
+  return JSON.stringify(value ?? null)
 }

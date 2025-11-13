@@ -1,6 +1,7 @@
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import type { Week } from '../../types/Week'
+import type { Descendant } from 'slate'
 
 export type ComponentKind = 'text' | 'image' | 'day-card'
 
@@ -81,6 +82,7 @@ export type BaseComponent = {
 
 export type TextComponentProps = {
   text: string
+  richText?: Descendant[]
   fontId: string
   fontSize: number
   colorToken: string
@@ -159,9 +161,17 @@ export type ScheduleSnapshot = {
 export function getDefaultComponentProps<K extends ComponentKind>(
   kind: K,
 ): ComponentPropsMap[K] {
+  const makeRichText = (text: string) => [
+    {
+      type: 'paragraph',
+      children: [{ text }],
+    },
+  ] as Descendant[]
+
   const defaults: ComponentPropsMap = {
     text: {
       text: 'Schedule',
+      richText: makeRichText('Schedule'),
       fontId: 'heading',
       fontSize: 72,
       colorToken: 'primary',

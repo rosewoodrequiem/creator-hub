@@ -142,6 +142,12 @@ function defaultComponentProps(
         kind: 'text',
         data: {
           text: 'Schedule',
+          richText: [
+            {
+              type: 'paragraph',
+              children: [{ text: 'Schedule' }],
+            },
+          ],
           fontId: 'heading',
           fontSize: 120,
           colorToken: 'primary',
