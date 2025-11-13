@@ -41,13 +41,31 @@ type RendererProps<K extends ComponentKind> = {
 
 type Renderer = (props: RendererProps<ComponentKind>) => ReactNode
 
+function isTextComponent(
+  component: ScheduleComponentWithProps
+): component is ScheduleComponentWithProps<'text'> {
+  return component.kind === 'text'
+}
+
+function isImageComponent(
+  component: ScheduleComponentWithProps
+): component is ScheduleComponentWithProps<'image'> {
+  return component.kind === 'image'
+}
+
+function isDayCardComponent(
+  component: ScheduleComponentWithProps
+): component is ScheduleComponentWithProps<'day-card'> {
+  return component.kind === 'day-card'
+}
+
 const textRenderer: Renderer = ({ component, theme }) => {
-  if (component.kind !== 'text') return null
+  if (!isTextComponent(component)) return null
   return <InlineTextBlock key={component.id} component={component} theme={theme} />
 }
 
 const imageRenderer: Renderer = ({ component, theme }) => {
-  if (component.kind !== 'image') return null
+  if (!isImageComponent(component)) return null
   const props = component.props
   const radius = resolveThemeRadius(
     theme,
@@ -89,7 +107,7 @@ const dayCardRenderer: Renderer = ({
   schedule,
   snapshot,
 }) => {
-  if (component.kind !== 'day-card') return null
+  if (!isDayCardComponent(component)) return null
   const props = component.props
   const day = props.day ?? Day.MON
   const dayData = snapshot.week[day]
