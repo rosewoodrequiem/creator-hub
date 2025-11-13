@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Editor,
   Range,
@@ -103,12 +104,15 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     colorToken: component.props.colorToken,
     fontId: component.props.fontId,
   }))
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const toolbarPointerRef = useRef(false)
+  const wasSelectedRef = useRef(isSelected)
   const autosaveTimeoutRef = useRef<number | null>(null)
   const lastSyncedTextRef = useRef(component.props.text ?? '')
   const lastSyncedRichRef = useRef(serializeRichText(component.props.richText))
   const pendingSyncRef = useRef(false)
+  const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number } | null>(null)
 
   const persistDraft = useCallback(async () => {
     if (!component.id || !dirty) return
@@ -354,6 +358,53 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
         ? 'flex-end'
         : 'flex-start'
 
+  const currentColor =
+    resolveThemeColor(theme, styleState.colorToken, '') ||
+    styleState.colorToken ||
+    '#0f172a'
+
+  const updateToolbarPosition = useCallback(() => {
+    if (!wrapperRef.current) return
+    const rect = wrapperRef.current.getBoundingClientRect()
+    setToolbarPos({
+      top: rect.top - 24,
+      left: rect.left + rect.width / 2,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!isFocused) {
+      setToolbarPos(null)
+      return
+    }
+    updateToolbarPosition()
+    window.addEventListener('resize', updateToolbarPosition)
+    window.addEventListener('scroll', updateToolbarPosition, true)
+    return () => {
+      window.removeEventListener('resize', updateToolbarPosition)
+      window.removeEventListener('scroll', updateToolbarPosition, true)
+    }
+  }, [isFocused, updateToolbarPosition])
+
+  useEffect(() => {
+    if (isFocused) updateToolbarPosition()
+  }, [editorKey, isFocused, updateToolbarPosition])
+
+  useEffect(() => {
+    if (isSelected && !wasSelectedRef.current) {
+      wasSelectedRef.current = true
+      const frame = requestAnimationFrame(() => {
+        try {
+          ReactEditor.focus(editor)
+        } catch (error) {
+          console.warn('Failed to focus editor:', error)
+        }
+      })
+      return () => cancelAnimationFrame(frame)
+    }
+    wasSelectedRef.current = isSelected
+  }, [isSelected, editor])
+
   if (!isSelected) {
     return (
       <div
@@ -385,11 +436,6 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     )
   }
 
-  const currentColor =
-    resolveThemeColor(theme, styleState.colorToken, '') ||
-    styleState.colorToken ||
-    '#0f172a'
-
   return (
     <div
       className="relative h-full w-full"
@@ -398,6 +444,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
         alignItems: 'center',
         justifyContent: alignment,
       }}
+      ref={wrapperRef}
       onClick={(event) => event.stopPropagation()}
     >
       <Slate
@@ -406,122 +453,129 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
         initialValue={draft}
         onChange={handleSlateChange}
       >
-        {isFocused && (
-          <div
-            className="pointer-events-none absolute -top-12 left-1/2 z-[2000] -translate-x-1/2 rounded-full border border-white/70 bg-white px-2 py-1 shadow-lg"
-            onPointerDown={(event) => {
-              event.preventDefault()
-              toolbarPointerRef.current = true
-            }}
-            onPointerUp={(event) => {
-              event.preventDefault()
-              toolbarPointerRef.current = false
-              ReactEditor.focus(editor)
-            }}
-          >
-            <div className="pointer-events-auto flex gap-1">
-              <ToolbarButton
-                label={
-                  STYLE_PRESETS.find(
-                    (preset) =>
-                      preset.fontSize === styleState.fontSize &&
-                      preset.fontId === styleState.fontId,
-                  )?.label ?? 'Style'
-                }
-                active={activeMenu === 'style'}
-                onToggle={() =>
-                  setActiveMenu(activeMenu === 'style' ? null : 'style')
-                }
-                menu={
-                  <ToolbarMenu>
-                    {STYLE_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        className="w-full rounded-lg px-3 py-1.5 text-left text-xs hover:bg-slate-100"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          applyPreset(preset.id)
-                        }}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </ToolbarMenu>
-                }
-              />
-              <ToolbarButton
-                label={`${styleState.fontSize}px`}
-                active={activeMenu === 'size'}
-                onToggle={() =>
-                  setActiveMenu(activeMenu === 'size' ? null : 'size')
-                }
-                menu={
-                  <ToolbarMenu>
-                    {FONT_SIZES.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className="w-full rounded-lg px-3 py-1.5 text-left text-xs hover:bg-slate-100"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          applyFontSize(size)
-                        }}
-                      >
-                        {size}px
-                      </button>
-                    ))}
-                  </ToolbarMenu>
-                }
-              />
-              <ToolbarButton
-                label=""
-                swatch={currentColor}
-                active={activeMenu === 'color'}
-                onToggle={() =>
-                  setActiveMenu(activeMenu === 'color' ? null : 'color')
-                }
-                menu={
-                  <ToolbarMenu>
-                    <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
-                      {theme.colors.map((colorToken) => (
+        {isFocused && toolbarPos &&
+          createPortal(
+            <div
+              className="pointer-events-none fixed z-[4000] rounded-full border border-white/70 bg-white px-4 py-2 shadow-2xl"
+              style={{
+                top: toolbarPos.top,
+                left: toolbarPos.left,
+                transform: 'translate(-50%, -50%)',
+              }}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                toolbarPointerRef.current = true
+              }}
+              onPointerUp={(event) => {
+                event.preventDefault()
+                toolbarPointerRef.current = false
+                ReactEditor.focus(editor)
+              }}
+            >
+              <div className="pointer-events-auto flex gap-2">
+                <ToolbarButton
+                  label={
+                    STYLE_PRESETS.find(
+                      (preset) =>
+                        preset.fontSize === styleState.fontSize &&
+                        preset.fontId === styleState.fontId,
+                    )?.label ?? 'Style'
+                  }
+                  active={activeMenu === 'style'}
+                  onToggle={() =>
+                    setActiveMenu(activeMenu === 'style' ? null : 'style')
+                  }
+                  menu={
+                    <ToolbarMenu>
+                      {STYLE_PRESETS.map((preset) => (
                         <button
-                          key={colorToken.id}
+                          key={preset.id}
                           type="button"
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs hover:bg-slate-100"
+                          className="w-full rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={(event) => {
                             event.preventDefault()
-                            applyThemeColor(colorToken.id)
+                            applyPreset(preset.id)
                           }}
                         >
-                          <span
-                            className="h-3 w-3 rounded-full border border-black/10"
-                            style={{ backgroundColor: colorToken.value }}
-                          />
-                          {colorToken.label}
+                          {preset.label}
                         </button>
                       ))}
-                      <button
-                        type="button"
-                        className="w-full rounded-lg px-3 py-1.5 text-left text-xs text-brand-accent hover:bg-slate-100"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          colorInputRef.current?.click()
-                        }}
-                      >
-                        Custom…
-                      </button>
-                    </div>
-                  </ToolbarMenu>
-                }
-              />
-            </div>
-          </div>
-        )}
+                    </ToolbarMenu>
+                  }
+                />
+                <ToolbarButton
+                  label={`${styleState.fontSize}px`}
+                  active={activeMenu === 'size'}
+                  onToggle={() =>
+                    setActiveMenu(activeMenu === 'size' ? null : 'size')
+                  }
+                  menu={
+                    <ToolbarMenu>
+                      {FONT_SIZES.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          className="w-full rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            applyFontSize(size)
+                          }}
+                        >
+                          {size}px
+                        </button>
+                      ))}
+                    </ToolbarMenu>
+                  }
+                />
+                <ToolbarButton
+                  label=""
+                  swatch={currentColor}
+                  active={activeMenu === 'color'}
+                  onToggle={() =>
+                    setActiveMenu(activeMenu === 'color' ? null : 'color')
+                  }
+                  menu={
+                    <ToolbarMenu>
+                      <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+                        {theme.colors.map((colorToken) => (
+                          <button
+                            key={colorToken.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={(event) => {
+                              event.preventDefault()
+                              applyThemeColor(colorToken.id)
+                            }}
+                          >
+                            <span
+                              className="h-3.5 w-3.5 rounded-full border border-black/10"
+                              style={{ backgroundColor: colorToken.value }}
+                            />
+                            {colorToken.label}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="w-full rounded-lg px-4 py-1.5 text-left text-sm text-brand-accent hover:bg-slate-100"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            colorInputRef.current?.click()
+                          }}
+                        >
+                          Custom…
+                        </button>
+                      </div>
+                    </ToolbarMenu>
+                  }
+                />
+              </div>
+            </div>,
+            document.body,
+          )}
         <div className="h-full w-full rounded-xl bg-transparent">
           <Editable
             spellCheck={false}
