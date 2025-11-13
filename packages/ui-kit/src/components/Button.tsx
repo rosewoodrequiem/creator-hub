@@ -39,7 +39,7 @@ export function Button({
         'inline-flex items-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60',
         variantStyles[variant],
         sizeStyles[size],
-        className
+        className,
       )}
       {...rest}
     >

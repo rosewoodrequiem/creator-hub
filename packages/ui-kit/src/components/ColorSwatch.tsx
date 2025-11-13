@@ -21,7 +21,7 @@ export function ColorSwatch({
         'group flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm font-medium transition',
         active
           ? 'border-brand-accent bg-brand-secondary/40 text-brand-ink shadow-sm'
-          : 'border-slate-200 hover:border-brand-accent/60 text-slate-600'
+          : 'border-slate-200 hover:border-brand-accent/60 text-slate-600',
       )}
     >
       <span

@@ -1,30 +1,45 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { createEditor, Node, type Descendant } from 'slate'
-import { Slate, Editable, withReact, ReactEditor } from 'slate-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type Descendant, Node, createEditor } from 'slate'
 import { withHistory } from 'slate-history'
+import { Editable, ReactEditor, Slate, withReact } from 'slate-react'
 
+import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import type {
   ScheduleComponentWithProps,
   Theme,
 } from '../../store/schedule-maker-db/SheduleMakerDB.types'
-import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import { useCanvasStore } from '../state/useCanvasStore'
-import {
-  resolveThemeColor,
-  resolveThemeFont,
-} from '../theme/themeUtils'
+import { resolveThemeColor, resolveThemeFont } from '../theme/themeUtils'
 
 const STYLE_PRESETS = [
-  { id: 'title', label: 'Title', fontSize: 96, colorToken: 'primary', fontId: 'heading' },
-  { id: 'heading', label: 'Heading', fontSize: 64, colorToken: 'text', fontId: 'heading' },
-  { id: 'body', label: 'Body', fontSize: 32, colorToken: 'text', fontId: 'body' },
-  { id: 'caption', label: 'Caption', fontSize: 20, colorToken: 'secondary', fontId: 'body' },
+  {
+    id: 'title',
+    label: 'Title',
+    fontSize: 96,
+    colorToken: 'primary',
+    fontId: 'heading',
+  },
+  {
+    id: 'heading',
+    label: 'Heading',
+    fontSize: 64,
+    colorToken: 'text',
+    fontId: 'heading',
+  },
+  {
+    id: 'body',
+    label: 'Body',
+    fontSize: 32,
+    colorToken: 'text',
+    fontId: 'body',
+  },
+  {
+    id: 'caption',
+    label: 'Caption',
+    fontSize: 20,
+    colorToken: 'secondary',
+    fontId: 'body',
+  },
 ]
 
 const FONT_SIZES = [12, 16, 20, 24, 32, 48, 64]
@@ -35,19 +50,21 @@ type InlineTextBlockProps = {
 }
 
 export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
-  const selectedComponentId = useCanvasStore((state) => state.selectedComponentId)
+  const selectedComponentId = useCanvasStore(
+    (state) => state.selectedComponentId,
+  )
   const selectComponent = useCanvasStore((state) => state.selectComponent)
 
   const isSelected = selectedComponentId === component.id
   const editor = useMemo(() => withHistory(withReact(createEditor())), [])
   const [draft, setDraft] = useState<Descendant[]>(() =>
-    fromPlainText(component.props.text)
+    fromPlainText(component.props.text),
   )
   const [editorKey, setEditorKey] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
-  const [activeMenu, setActiveMenu] = useState<'style' | 'size' | 'color' | null>(
-    null
-  )
+  const [activeMenu, setActiveMenu] = useState<
+    'style' | 'size' | 'color' | null
+  >(null)
   const [dirty, setDirty] = useState(false)
   const [styleDirty, setStyleDirty] = useState(false)
   const [displayText, setDisplayText] = useState(component.props.text ?? '')
@@ -179,15 +196,15 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   const fontFamily = resolveThemeFont(
     theme,
     styleState.fontId,
-    'Poppins, sans-serif'
+    'Poppins, sans-serif',
   )
   const color = resolveThemeColor(theme, styleState.colorToken, '#0f172a')
   const alignment =
     component.props.align === 'center'
       ? 'center'
       : component.props.align === 'right'
-      ? 'flex-end'
-      : 'flex-start'
+        ? 'flex-end'
+        : 'flex-start'
 
   if (!isSelected) {
     return (
@@ -252,7 +269,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
                   STYLE_PRESETS.find(
                     (preset) =>
                       preset.fontSize === styleState.fontSize &&
-                      preset.fontId === styleState.fontId
+                      preset.fontId === styleState.fontId,
                   )?.label ?? 'Style'
                 }
                 active={activeMenu === 'style'}

@@ -1,9 +1,9 @@
 import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'node:url'
+import { URL, fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 
 const uiKitPath = fileURLToPath(
-  new URL('../../packages/ui-kit/src', import.meta.url)
+  new URL('../../packages/ui-kit/src', import.meta.url),
 )
 
 export default defineConfig({

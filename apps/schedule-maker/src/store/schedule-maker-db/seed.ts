@@ -1,7 +1,6 @@
 import { Transaction } from 'dexie'
 
 import { Day } from '../../types/Day'
-
 import {
   Schedule,
   ScheduleComponent,
@@ -134,7 +133,7 @@ function defaultComponents(scheduleId: number, now: number): SeedComponent[] {
 
 function defaultComponentProps(
   components: (SeedComponent & { id: number })[],
-  now: number
+  now: number,
 ): ScheduleComponentProps[] {
   return components.map((component) => {
     if (component.kind === 'text') {
@@ -203,7 +202,7 @@ export async function seed(transaction: Transaction) {
   const now = Date.now()
   const themeId = await transaction.themes.put(defaultTheme(now))
   const scheduleId = await transaction.schedules.put(
-    defaultSchedule(themeId, now)
+    defaultSchedule(themeId, now),
   )
 
   const days = defaultDays(scheduleId, now)
@@ -219,7 +218,7 @@ export async function seed(transaction: Transaction) {
     componentsToInsert,
     {
       allKeys: true,
-    }
+    },
   )
 
   const componentsWithIds = seedComponents.map((component, index) => ({

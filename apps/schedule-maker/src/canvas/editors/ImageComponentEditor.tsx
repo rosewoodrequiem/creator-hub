@@ -41,7 +41,7 @@ export function ImageComponentEditor({ component, theme }: Props) {
                 borderRadius: resolveThemeRadius(
                   theme,
                   component.props.borderRadiusToken,
-                  theme.radii.lg
+                  theme.radii.lg,
                 ),
               }}
             />

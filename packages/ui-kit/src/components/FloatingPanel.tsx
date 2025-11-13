@@ -19,7 +19,7 @@ export function FloatingPanel({
     <div
       className={clsx(
         'w-[320px] space-y-3 rounded-3xl border border-white/70 bg-white/90 p-4 shadow-2xl backdrop-blur',
-        className
+        className,
       )}
     >
       {(title || subtitle || actions) && (

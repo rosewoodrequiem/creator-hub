@@ -1,7 +1,6 @@
 import clsx from 'clsx'
 
 import type { Theme } from '../store/schedule-maker-db/SheduleMakerDB.types'
-
 import { CanvasComponentFrame } from './components/CanvasComponentFrame'
 import NoiseOverlay from './components/NoiseOverlay'
 import { SelectionEditorOverlay } from './components/SelectionEditorOverlay'
@@ -16,7 +15,7 @@ const CANVAS_HEIGHT = 1080
 export default function SchedulePreview() {
   const snapshot = useScheduleSnapshot()
   const selectedComponentId = useCanvasStore(
-    (state) => state.selectedComponentId
+    (state) => state.selectedComponentId,
   )
   const selectComponent = useCanvasStore((state) => state.selectComponent)
   const deselect = useCanvasStore((state) => state.deselect)
@@ -42,7 +41,7 @@ export default function SchedulePreview() {
     <div
       id="capture-root"
       className={clsx(
-        'relative h-[1080px] w-[1920px] overflow-hidden rounded-3xl border border-white/20 shadow-2xl'
+        'relative h-[1080px] w-[1920px] overflow-hidden rounded-3xl border border-white/20 shadow-2xl',
       )}
       style={{
         background,

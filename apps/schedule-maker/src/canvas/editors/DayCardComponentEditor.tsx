@@ -29,7 +29,7 @@ export function DayCardComponentEditor({ component, theme, snapshot }: Props) {
   }
 
   const selectColor = (
-    property: 'backgroundColorToken' | 'accentColorToken'
+    property: 'backgroundColorToken' | 'accentColorToken',
   ) => {
     return (value: string) => {
       const token =
@@ -42,10 +42,10 @@ export function DayCardComponentEditor({ component, theme, snapshot }: Props) {
   }
 
   const backgroundColor = theme.colors.find(
-    (color) => color.id === component.props.backgroundColorToken
+    (color) => color.id === component.props.backgroundColorToken,
   )?.value
   const accentColor = theme.colors.find(
-    (color) => color.id === component.props.accentColorToken
+    (color) => color.id === component.props.accentColorToken,
   )?.value
 
   return (

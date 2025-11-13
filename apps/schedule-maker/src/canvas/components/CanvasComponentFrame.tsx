@@ -23,7 +23,7 @@ export function CanvasComponentFrame({
     <div
       className={clsx(
         'absolute rounded-xl transition ring-offset-2',
-        selected ? 'ring-2 ring-pink-400' : 'ring-1 ring-transparent'
+        selected ? 'ring-2 ring-pink-400' : 'ring-1 ring-transparent',
       )}
       style={{
         left: x,

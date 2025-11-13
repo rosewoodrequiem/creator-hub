@@ -48,7 +48,7 @@ export function SelectionEditorOverlay({
 function computePosition(
   component: ScheduleComponentWithProps,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
 ) {
   let left = component.x + component.width + OFFSET
   if (left + PANEL_WIDTH > canvasWidth - 16) {

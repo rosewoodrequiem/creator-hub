@@ -5,13 +5,10 @@ import { DB } from '../../dexie'
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import { Week } from '../../types/Week'
-
 import { emptyWeek } from './ScheduleMakerDB.helpers'
-import { seed } from './seed'
 import {
   ComponentKind,
   ComponentPropsMap,
-  getDefaultComponentProps,
   GlobalRow,
   ImageComponentProps,
   ImageRow,
@@ -22,7 +19,9 @@ import {
   ScheduleDay,
   ScheduleSnapshot,
   Theme,
+  getDefaultComponentProps,
 } from './SheduleMakerDB.types'
+import { seed } from './seed'
 
 const DB_NAME = 'schedule-maker'
 const GLOBAL_ROW_ID = 1
@@ -30,6 +29,24 @@ const DEFAULT_TEMPLATE: TemplateId = 'ElegantBlue'
 const DEFAULT_EXPORT_SCALE = 2
 const DEFAULT_TIMEZONE =
   Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+
+const FALLBACK_THEME = {
+  slug: DEFAULT_TEMPLATE,
+  name: 'Elegant Blue',
+  description: 'Soft gradients and friendly typography for VTuber schedules.',
+  colors: [
+    { id: 'primary', label: 'Primary', value: '#7aa5d6' },
+    { id: 'secondary', label: 'Secondary', value: '#f9d8ff' },
+    { id: 'text', label: 'Body Text', value: '#1d2430' },
+    { id: 'background', label: 'Canvas', value: '#f4f8ff' },
+    { id: 'card', label: 'Card', value: '#ffffff' },
+  ],
+  fonts: [
+    { id: 'heading', label: 'Heading', family: 'Poppins, sans-serif' },
+    { id: 'body', label: 'Body', family: 'Inter, sans-serif' },
+  ],
+  radii: { none: 0, sm: 4, md: 12, lg: 24, pill: 999 },
+} as const
 
 const DAYS_ORDER = [
   Day.MON,
@@ -94,13 +111,13 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
   get timezone() {
     return this.ensureCurrentSchedule().then(
-      (s) => s.timezone ?? DEFAULT_TIMEZONE
+      (s) => s.timezone ?? DEFAULT_TIMEZONE,
     )
   }
 
   get exportScale() {
     return this.ensureGlobalRow().then(
-      (g) => g.exportScale ?? DEFAULT_EXPORT_SCALE
+      (g) => g.exportScale ?? DEFAULT_EXPORT_SCALE,
     )
   }
 
@@ -273,7 +290,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
   async updateComponentProps<K extends ComponentKind>(
     componentId: number,
     kind: K,
-    patch: Partial<ComponentPropsMap[K]>
+    patch: Partial<ComponentPropsMap[K]>,
   ) {
     const component = await this.components.get(componentId)
     if (!component) {
@@ -390,7 +407,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
           const typed = { ...(stored as ComponentPropsMap['day-card']) }
           if (typeof typed.backgroundImageId === 'number') {
             typed.backgroundImageUrl = assetMap.get(
-              typed.backgroundImageId
+              typed.backgroundImageId,
             )?.data
           } else {
             typed.backgroundImageUrl = undefined
@@ -411,7 +428,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
   private async ensureScheduleDays(
     scheduleId: number,
-    existing: ScheduleDay[]
+    existing: ScheduleDay[],
   ) {
     const existingDays = new Set(existing.map((row) => row.day))
     const now = Date.now()
@@ -425,7 +442,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
         imageId: undefined,
         createdAt: now,
         updatedAt: now,
-      })
+      }),
     )
 
     if (missing.length > 0) {
@@ -440,13 +457,19 @@ export class ScheduleMakerDB extends Dexie implements DB {
     }
 
     const fallback = await this.themes.toCollection().first()
-    if (!fallback) {
-      throw new Error(
-        'No themes available. Seed the database before rendering the canvas.'
-      )
-    }
+    if (fallback) return fallback
 
-    return fallback
+    const now = Date.now()
+    const newId = await this.themes.add({
+      ...FALLBACK_THEME,
+      createdAt: now,
+      updatedAt: now,
+    })
+    const created = await this.themes.get(newId)
+    if (!created) {
+      throw new Error('Failed to create fallback theme record')
+    }
+    return created
   }
 
   private async getHeroImageData() {
@@ -470,7 +493,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
   private async upsertImageComponentProps(
     componentId: number,
-    imageId: number | undefined
+    imageId: number | undefined,
   ) {
     const now = Date.now()
     const existing = await this.componentProps.where({ componentId }).first()

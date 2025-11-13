@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useCallback } from 'react'
 
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from '../../types/Day'
@@ -16,13 +16,13 @@ export const useWeek = () => {
       const startIdx = weekStart === Day.SUN ? 0 : 1
       const diffFromStart =
         [Day.SUN, Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT].indexOf(
-          day
+          day,
         ) - startIdx
       const date = new Date(weekAnchor)
       date.setDate(weekAnchor.getDate() + diffFromStart)
       return date
     },
-    [week, weekAnchor, weekStart]
+    [week, weekAnchor, weekStart],
   )
 
   return {

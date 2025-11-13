@@ -144,7 +144,7 @@ export type GlobalRow = {
 }
 
 export type ScheduleComponentWithProps<
-  K extends ComponentKind = ComponentKind
+  K extends ComponentKind = ComponentKind,
 > = ScheduleComponent<K> & {
   props: ComponentPropsMap[K]
 }
@@ -157,7 +157,7 @@ export type ScheduleSnapshot = {
 }
 
 export function getDefaultComponentProps<K extends ComponentKind>(
-  kind: K
+  kind: K,
 ): ComponentPropsMap[K] {
   const defaults: ComponentPropsMap = {
     text: {

@@ -7,7 +7,6 @@ import type {
   Theme,
 } from '../../store/schedule-maker-db/SheduleMakerDB.types'
 import { useCanvasStore } from '../state/useCanvasStore'
-
 import { DayCardComponentEditor } from './DayCardComponentEditor'
 import { ImageComponentEditor } from './ImageComponentEditor'
 

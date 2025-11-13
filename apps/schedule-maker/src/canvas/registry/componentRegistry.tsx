@@ -42,26 +42,28 @@ type RendererProps<K extends ComponentKind> = {
 type Renderer = (props: RendererProps<ComponentKind>) => ReactNode
 
 function isTextComponent(
-  component: ScheduleComponentWithProps
+  component: ScheduleComponentWithProps,
 ): component is ScheduleComponentWithProps<'text'> {
   return component.kind === 'text'
 }
 
 function isImageComponent(
-  component: ScheduleComponentWithProps
+  component: ScheduleComponentWithProps,
 ): component is ScheduleComponentWithProps<'image'> {
   return component.kind === 'image'
 }
 
 function isDayCardComponent(
-  component: ScheduleComponentWithProps
+  component: ScheduleComponentWithProps,
 ): component is ScheduleComponentWithProps<'day-card'> {
   return component.kind === 'day-card'
 }
 
 const textRenderer: Renderer = ({ component, theme }) => {
   if (!isTextComponent(component)) return null
-  return <InlineTextBlock key={component.id} component={component} theme={theme} />
+  return (
+    <InlineTextBlock key={component.id} component={component} theme={theme} />
+  )
 }
 
 const imageRenderer: Renderer = ({ component, theme }) => {
@@ -70,7 +72,7 @@ const imageRenderer: Renderer = ({ component, theme }) => {
   const radius = resolveThemeRadius(
     theme,
     props.borderRadiusToken,
-    theme.radii.lg
+    theme.radii.lg,
   )
   const background = resolveThemeColor(theme, 'card', '#e2e8f0')
 
@@ -130,17 +132,17 @@ const dayCardRenderer: Renderer = ({
   const backgroundColor = resolveThemeColor(
     theme,
     props.backgroundColorToken ?? dayData?.backgroundColorToken ?? 'card',
-    '#ffffff'
+    '#ffffff',
   )
   const accent = resolveThemeColor(
     theme,
     props.accentColorToken ?? 'primary',
-    '#7aa5d6'
+    '#7aa5d6',
   )
   const radius = resolveThemeRadius(
     theme,
     props.borderRadiusToken ?? 'lg',
-    theme.radii.lg
+    theme.radii.lg,
   )
   const textColor = resolveThemeColor(theme, 'text', '#0f172a')
   const zoneColor = resolveThemeColor(theme, 'secondary', '#64748b')
@@ -176,7 +178,7 @@ const dayCardRenderer: Renderer = ({
             fontFamily: resolveThemeFont(
               theme,
               'heading',
-              'Poppins, sans-serif'
+              'Poppins, sans-serif',
             ),
           }}
         >
@@ -212,7 +214,8 @@ const dayCardRenderer: Renderer = ({
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(90deg, rgba(15,23,42,0.7) 0%, transparent 100%)',
+            background:
+              'linear-gradient(90deg, rgba(15,23,42,0.7) 0%, transparent 100%)',
           }}
         />
       </div>
