@@ -1,5 +1,6 @@
 // dexie-augment.d.ts
 import 'dexie'
+
 import type { Table } from 'dexie'
 
 import {
@@ -9,6 +10,7 @@ import {
   ScheduleComponent,
   ScheduleComponentProps,
   ScheduleDay,
+  SnapshotRow,
   Theme,
 } from './store/schedule-maker-db/SheduleMakerDB.types'
 
@@ -24,4 +26,5 @@ type DB = {
   componentProps: Table<ScheduleComponentProps, number>
   themes: Table<Theme, number>
   global: Table<GlobalRow, number>
+  snapshots: Table<SnapshotRow, number>
 }

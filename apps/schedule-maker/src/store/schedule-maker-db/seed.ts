@@ -1,6 +1,7 @@
 import { Transaction } from 'dexie'
 
 import { Day } from '../../types/Day'
+
 import {
   Schedule,
   ScheduleComponent,

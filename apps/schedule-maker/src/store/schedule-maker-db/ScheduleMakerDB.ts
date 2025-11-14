@@ -5,10 +5,14 @@ import { DB } from '../../dexie'
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import { Week } from '../../types/Week'
+
 import { emptyWeek } from './ScheduleMakerDB.helpers'
+import { seed } from './seed'
 import {
   ComponentKind,
   ComponentPropsMap,
+  FilteredScheduleState,
+  getDefaultComponentProps,
   GlobalRow,
   ImageComponentProps,
   ImageRow,
@@ -18,10 +22,9 @@ import {
   ScheduleComponentWithProps,
   ScheduleDay,
   ScheduleSnapshot,
+  SnapshotRow,
   Theme,
-  getDefaultComponentProps,
 } from './SheduleMakerDB.types'
-import { seed } from './seed'
 
 const DB_NAME = 'schedule-maker'
 const GLOBAL_ROW_ID = 1
@@ -58,6 +61,9 @@ const DAYS_ORDER = [
   Day.SUN,
 ]
 
+const SNAPSHOT_DEBOUNCE_MS = 800
+const SNAPSHOT_HISTORY_LIMIT = 50
+
 export class ScheduleMakerDB extends Dexie implements DB {
   images!: DB['images']
   schedules!: DB['schedules']
@@ -66,11 +72,19 @@ export class ScheduleMakerDB extends Dexie implements DB {
   componentProps!: DB['componentProps']
   themes!: DB['themes']
   global!: DB['global']
+  snapshots!: DB['snapshots']
+
+  private snapshotTimer: ReturnType<typeof setTimeout> | null = null
+  private pendingSnapshotReason: string | null = null
+  private latestSnapshotState: FilteredScheduleState | null = null
+  private latestSnapshotHash: string | null = null
+  private snapshotBaselinePromise: Promise<void> | null = null
+  private isRestoringSnapshot = false
 
   constructor() {
     super(DB_NAME, { addons: [relationships] })
 
-    this.version(1).stores({
+    const baseStores = {
       images: '++id, name',
       themes: '++id, slug, name',
       schedules: '++id, name, themeId, updatedAt',
@@ -78,6 +92,12 @@ export class ScheduleMakerDB extends Dexie implements DB {
       components: '++id, scheduleId, kind, zIndex, updatedAt',
       componentProps: '++id, componentId, kind',
       global: '++id, currentScheduleId',
+    }
+
+    this.version(1).stores(baseStores)
+    this.version(2).stores({
+      ...baseStores,
+      snapshots: '++id, scheduleId, createdAt',
     })
 
     this.images = this.table('images')
@@ -87,10 +107,13 @@ export class ScheduleMakerDB extends Dexie implements DB {
     this.components = this.table('components')
     this.componentProps = this.table('componentProps')
     this.global = this.table('global')
+    this.snapshots = this.table('snapshots')
 
     this.on('populate', function (transaction) {
       seed(transaction)
     })
+
+    void this.initializeSnapshotBaseline()
   }
 
   get scheduleId() {
@@ -185,6 +208,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
       weekStart: day,
       updatedAt: Date.now(),
     })
+    this.requestSnapshotCapture('week-start')
   }
 
   async setWeekAnchor(anchor: Date) {
@@ -194,6 +218,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
       weekAnchor: anchor.toISOString(),
       updatedAt: Date.now(),
     })
+    this.requestSnapshotCapture('week-anchor')
   }
 
   async setTimezone(timezone: string) {
@@ -203,11 +228,13 @@ export class ScheduleMakerDB extends Dexie implements DB {
       timezone,
       updatedAt: Date.now(),
     })
+    this.requestSnapshotCapture('timezone')
   }
 
   async setExportScale(scale: number) {
     const global = await this.ensureGlobalRow()
     await this.global.put({ ...global, exportScale: scale })
+    this.requestSnapshotCapture('export-scale')
   }
 
   async setCurrentTemplate(template: TemplateId) {
@@ -222,6 +249,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
       themeId: theme.id,
       updatedAt: Date.now(),
     })
+    this.requestSnapshotCapture('theme')
   }
 
   async setHeroImage(file: File | null) {
@@ -235,6 +263,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
     const imageId = file ? await this.uploadImage(file) : undefined
     await this.upsertImageComponentProps(hero.id, imageId)
+    this.requestSnapshotCapture('hero-image')
   }
 
   async toggleDayEnabled(day: Day, enabled: boolean) {
@@ -246,6 +275,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
       row.enabled = enabled
       row.updatedAt = now
     })
+    this.requestSnapshotCapture('day-toggle')
   }
 
   async uploadImage(file: File): Promise<number> {
@@ -314,16 +344,17 @@ export class ScheduleMakerDB extends Dexie implements DB {
         kind: resolvedKind,
         updatedAt: now,
       })
-      return
+    } else {
+      await this.componentProps.add({
+        componentId,
+        kind: resolvedKind,
+        data,
+        createdAt: now,
+        updatedAt: now,
+      })
     }
 
-    await this.componentProps.add({
-      componentId,
-      kind: resolvedKind,
-      data,
-      createdAt: now,
-      updatedAt: now,
-    })
+    this.requestSnapshotCapture('component-props')
   }
 
   async updateScheduleDay(day: Day, patch: Partial<ScheduleDay>) {
@@ -335,6 +366,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
       Object.assign(row, patch)
       row.updatedAt = now
     })
+    this.requestSnapshotCapture('schedule-day')
   }
 
   async getScheduleSnapshot(): Promise<ScheduleSnapshot | null> {
@@ -424,6 +456,301 @@ export class ScheduleMakerDB extends Dexie implements DB {
     componentsWithProps.sort((a, b) => a.zIndex - b.zIndex)
 
     return { schedule, theme, week, components: componentsWithProps }
+  }
+
+  requestSnapshotCapture(reason?: string) {
+    if (this.isRestoringSnapshot) return
+    if (reason) {
+      this.pendingSnapshotReason = reason
+    }
+    if (this.snapshotTimer) {
+      clearTimeout(this.snapshotTimer)
+    }
+    this.snapshotTimer = setTimeout(() => {
+      this.snapshotTimer = null
+      const pendingReason = this.pendingSnapshotReason
+      this.pendingSnapshotReason = null
+      void this.captureSnapshot(pendingReason)
+    }, SNAPSHOT_DEBOUNCE_MS)
+  }
+
+  async undo(): Promise<boolean> {
+    const global = await this.ensureGlobalRow()
+    const cursorId = global.snapshotCursorId
+    const scheduleId =
+      global.snapshotCursorScheduleId ?? (await this.ensureCurrentScheduleId())
+    if (!scheduleId || cursorId == null) return false
+
+    const current = await this.snapshots.get(cursorId)
+    if (!current?.prev) return false
+
+    await this.applySnapshotState(current.prev)
+
+    const previousRow = await this.snapshots
+      .where('scheduleId')
+      .equals(scheduleId)
+      .and((row) => (row.id ?? 0) < cursorId)
+      .last()
+
+    await this.global.put({
+      ...global,
+      snapshotCursorId: previousRow?.id ?? null,
+      snapshotCursorScheduleId: scheduleId,
+    })
+
+    return true
+  }
+
+  async redo(): Promise<boolean> {
+    const global = await this.ensureGlobalRow()
+    const scheduleId =
+      global.snapshotCursorScheduleId ?? (await this.ensureCurrentScheduleId())
+    if (!scheduleId) return false
+
+    const cursorId = global.snapshotCursorId ?? 0
+
+    const nextRow = await this.snapshots
+      .where('scheduleId')
+      .equals(scheduleId)
+      .and((row) => (row.id ?? 0) > cursorId)
+      .first()
+
+    if (!nextRow) return false
+
+    await this.applySnapshotState(nextRow.next)
+
+    await this.global.put({
+      ...global,
+      snapshotCursorId: nextRow.id ?? null,
+      snapshotCursorScheduleId: scheduleId,
+    })
+
+    return true
+  }
+
+  async canUndo(): Promise<boolean> {
+    const global = await this.ensureGlobalRow()
+    if (global.snapshotCursorId == null) return false
+    const row = await this.snapshots.get(global.snapshotCursorId)
+    return !!row?.prev
+  }
+
+  async canRedo(): Promise<boolean> {
+    const global = await this.ensureGlobalRow()
+    const scheduleId =
+      global.snapshotCursorScheduleId ?? (await this.ensureCurrentScheduleId())
+    if (!scheduleId) return false
+    const cursorId = global.snapshotCursorId ?? 0
+    const nextRow = await this.snapshots
+      .where('scheduleId')
+      .equals(scheduleId)
+      .and((row) => (row.id ?? 0) > cursorId)
+      .first()
+    return !!nextRow
+  }
+
+  private async initializeSnapshotBaseline() {
+    await this.ensureSnapshotBaseline()
+  }
+
+  private async ensureSnapshotBaseline() {
+    if (this.latestSnapshotState) return
+    if (!this.snapshotBaselinePromise) {
+      this.snapshotBaselinePromise = (async () => {
+        const initial = await this.exportFilteredState()
+        if (initial) {
+          this.latestSnapshotState = initial
+          this.latestSnapshotHash = this.serializeState(initial)
+        }
+      })().finally(() => {
+        this.snapshotBaselinePromise = null
+      })
+    }
+    await this.snapshotBaselinePromise
+  }
+
+  private async captureSnapshot(reason?: string | null) {
+    await this.ensureSnapshotBaseline()
+    const nextState = await this.exportFilteredState()
+    if (!nextState?.schedule.id) return
+
+    const nextHash = this.serializeState(nextState)
+    if (this.latestSnapshotHash === nextHash) return
+
+    const prevState = this.latestSnapshotState
+    const prevClone = prevState ? this.cloneState(prevState) : null
+    const nextClone = this.cloneState(nextState)
+    const scheduleId = nextState.schedule.id
+
+    const global = await this.ensureGlobalRow()
+    const shouldPrune = global.snapshotCursorScheduleId === scheduleId
+    await this.pruneSnapshotsAfterCursor(
+      scheduleId,
+      shouldPrune ? (global.snapshotCursorId ?? null) : undefined,
+    )
+
+    const id = await this.snapshots.add({
+      scheduleId,
+      prev: prevClone,
+      next: nextClone,
+      createdAt: Date.now(),
+      reason: reason ?? null,
+    } satisfies SnapshotRow)
+
+    await this.global.put({
+      ...global,
+      snapshotCursorId: id,
+      snapshotCursorScheduleId: scheduleId,
+    })
+
+    await this.trimSnapshotHistory(scheduleId)
+
+    this.latestSnapshotState = nextState
+    this.latestSnapshotHash = nextHash
+  }
+
+  private async exportFilteredState(): Promise<FilteredScheduleState | null> {
+    const schedule = await this.ensureCurrentSchedule()
+    if (!schedule?.id) return null
+    const scheduleId = schedule.id
+
+    const [global, scheduleDays, components] = await Promise.all([
+      this.ensureGlobalRow(),
+      this.scheduleDays.where({ scheduleId }).toArray(),
+      this.components.where({ scheduleId }).toArray(),
+    ])
+
+    const componentIds = components
+      .map((component) => component.id)
+      .filter((id): id is number => typeof id === 'number')
+
+    const componentProps = componentIds.length
+      ? await this.componentProps
+          .where('componentId')
+          .anyOf(componentIds)
+          .toArray()
+      : []
+
+    const cloneSchedule = { ...schedule }
+    const cloneDays = scheduleDays
+      .map((row) => ({ ...row }))
+      .sort((a, b) => DAYS_ORDER.indexOf(a.day) - DAYS_ORDER.indexOf(b.day))
+    const cloneComponents = components
+      .map((row) => ({ ...row }))
+      .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+    const cloneProps = componentProps
+      .map((row) => ({ ...row }))
+      .sort((a, b) => (a.componentId ?? 0) - (b.componentId ?? 0))
+
+    return {
+      schedule: cloneSchedule,
+      global: {
+        currentScheduleId: global.currentScheduleId,
+        exportScale: global.exportScale,
+        sidebarOpen: global.sidebarOpen,
+      },
+      scheduleDays: cloneDays,
+      components: cloneComponents,
+      componentProps: cloneProps,
+    }
+  }
+
+  private async applySnapshotState(state: FilteredScheduleState) {
+    if (!state.schedule.id) return
+    const scheduleId = state.schedule.id
+
+    this.isRestoringSnapshot = true
+    try {
+      await this.transaction(
+        'rw',
+        this.schedules,
+        this.scheduleDays,
+        this.components,
+        this.componentProps,
+        this.global,
+        async () => {
+          await this.schedules.put(state.schedule)
+
+          const global = await this.ensureGlobalRow()
+          await this.global.put({
+            ...global,
+            currentScheduleId: state.global.currentScheduleId,
+            exportScale: state.global.exportScale,
+            sidebarOpen: state.global.sidebarOpen,
+          })
+
+          await this.scheduleDays.where({ scheduleId }).delete()
+          if (state.scheduleDays.length) {
+            await this.scheduleDays.bulkPut(state.scheduleDays)
+          }
+
+          const existingComponentIds = await this.components
+            .where({ scheduleId })
+            .primaryKeys()
+
+          if (existingComponentIds.length) {
+            await this.componentProps
+              .where('componentId')
+              .anyOf(existingComponentIds as number[])
+              .delete()
+          }
+
+          await this.components.where({ scheduleId }).delete()
+          if (state.components.length) {
+            await this.components.bulkPut(state.components)
+          }
+
+          if (state.componentProps.length) {
+            await this.componentProps.bulkPut(state.componentProps)
+          }
+        },
+      )
+      this.latestSnapshotState = this.cloneState(state)
+      this.latestSnapshotHash = this.serializeState(state)
+    } finally {
+      this.isRestoringSnapshot = false
+    }
+  }
+
+  private async pruneSnapshotsAfterCursor(
+    scheduleId: number,
+    cursorId: number | null | undefined,
+  ) {
+    if (cursorId === undefined) return
+    const collection = this.snapshots.where('scheduleId').equals(scheduleId)
+    if (cursorId == null) {
+      await collection.delete()
+      return
+    }
+    await collection.and((row) => (row.id ?? 0) > cursorId).delete()
+  }
+
+  private async trimSnapshotHistory(scheduleId: number) {
+    const total = await this.snapshots
+      .where('scheduleId')
+      .equals(scheduleId)
+      .count()
+    if (total <= SNAPSHOT_HISTORY_LIMIT) return
+    const excess = total - SNAPSHOT_HISTORY_LIMIT
+    const staleRows = await this.snapshots
+      .orderBy('id')
+      .filter((row) => row.scheduleId === scheduleId)
+      .limit(excess)
+      .toArray()
+    const staleIds = staleRows
+      .map((row) => row.id)
+      .filter((id): id is number => typeof id === 'number')
+    if (staleIds.length) {
+      await this.snapshots.bulkDelete(staleIds)
+    }
+  }
+
+  private serializeState(state: FilteredScheduleState) {
+    return JSON.stringify(state)
+  }
+
+  private cloneState<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value))
   }
 
   private async ensureScheduleDays(
@@ -537,17 +864,37 @@ export class ScheduleMakerDB extends Dexie implements DB {
         currentScheduleId: null,
         exportScale: DEFAULT_EXPORT_SCALE,
         sidebarOpen: true,
+        snapshotCursorId: null,
+        snapshotCursorScheduleId: null,
       }
       await this.global.put(row)
       return row
     }
 
+    let mutated = false
+
     if (typeof row.exportScale !== 'number') {
       row.exportScale = DEFAULT_EXPORT_SCALE
+      mutated = true
     }
 
     if (typeof row.sidebarOpen !== 'boolean') {
       row.sidebarOpen = true
+      mutated = true
+    }
+
+    if (row.snapshotCursorId === undefined) {
+      row.snapshotCursorId = null
+      mutated = true
+    }
+
+    if (row.snapshotCursorScheduleId === undefined) {
+      row.snapshotCursorScheduleId = null
+      mutated = true
+    }
+
+    if (mutated) {
+      await this.global.put(row)
     }
 
     return row

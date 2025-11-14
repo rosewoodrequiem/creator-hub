@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Editor,
+  type Descendant,
+  Node,
   Range,
   Text,
   Transforms,
-  type Descendant,
-  Node,
   createEditor,
 } from 'slate'
 import { withHistory } from 'slate-history'
 import {
   Editable,
   ReactEditor,
+  type RenderLeafProps,
   Slate,
   withReact,
-  type RenderLeafProps,
 } from 'slate-react'
 
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
@@ -112,7 +111,10 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   const lastSyncedTextRef = useRef(component.props.text ?? '')
   const lastSyncedRichRef = useRef(serializeRichText(component.props.richText))
   const pendingSyncRef = useRef(false)
-  const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number } | null>(null)
+  const [toolbarPos, setToolbarPos] = useState<{
+    top: number
+    left: number
+  } | null>(null)
 
   const persistDraft = useCallback(async () => {
     if (!component.id || !dirty) return
@@ -136,7 +138,13 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
       pendingSyncRef.current = true
     }
     setDirty(false)
-  }, [component.id, component.props.text, component.props.richText, dirty, draft])
+  }, [
+    component.id,
+    component.props.text,
+    component.props.richText,
+    dirty,
+    draft,
+  ])
 
   const serializedRichText = useMemo(
     () => serializeRichText(component.props.richText),
@@ -163,8 +171,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     ) {
       return
     }
-    const next =
-      component.props.richText ?? fromPlainText(component.props.text)
+    const next = component.props.richText ?? fromPlainText(component.props.text)
     const cloned = cloneDescendants(next)
     lastSyncedTextRef.current = incomingText
     lastSyncedRichRef.current = serializedRichText
@@ -251,7 +258,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     const nextText = toPlainText(nextValue)
     setDraft(nextValue)
     setDirty(true)
-     setDisplayNodes(nextValue)
+    setDisplayNodes(nextValue)
     setDisplayText(nextText)
     setStyleState((prev) => ({ ...prev }))
   }, [])
@@ -453,7 +460,8 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
         initialValue={draft}
         onChange={handleSlateChange}
       >
-        {isFocused && toolbarPos &&
+        {isFocused &&
+          toolbarPos &&
           createPortal(
             <div
               className="pointer-events-none fixed z-[4000] rounded-full border border-white/70 bg-white px-4 py-2 shadow-2xl"
@@ -600,11 +608,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
               setActiveMenu(null)
             }}
             renderLeaf={(leafProps) => (
-              <Leaf
-                {...leafProps}
-                theme={theme}
-                baseStyle={styleState}
-              />
+              <Leaf {...leafProps} theme={theme} baseStyle={styleState} />
             )}
           />
         </div>
@@ -678,14 +682,24 @@ type LeafComponentProps = RenderLeafProps & {
 
 type InlineLeaf = Text & InlineLeafStyle
 
-function Leaf({ attributes, children, leaf, theme, baseStyle }: LeafComponentProps) {
+function Leaf({
+  attributes,
+  children,
+  leaf,
+  theme,
+  baseStyle,
+}: LeafComponentProps) {
   const resolvedFontId = (leaf.fontId as string | undefined) ?? baseStyle.fontId
   const resolvedFontSize =
     (leaf.fontSize as number | undefined) ?? baseStyle.fontSize
   const colorToken =
     (leaf.colorToken as string | undefined) ?? baseStyle.colorToken
   const colorValue = leaf.colorValue as string | undefined
-  const fontFamily = resolveThemeFont(theme, resolvedFontId, 'Poppins, sans-serif')
+  const fontFamily = resolveThemeFont(
+    theme,
+    resolvedFontId,
+    'Poppins, sans-serif',
+  )
   const color = colorValue
     ? colorValue
     : resolveThemeColor(theme, colorToken, '#0f172a')

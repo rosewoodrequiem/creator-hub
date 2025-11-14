@@ -1,7 +1,8 @@
+import type { Descendant } from 'slate'
+
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import type { Week } from '../../types/Week'
-import type { Descendant } from 'slate'
 
 export type ComponentKind = 'text' | 'image' | 'day-card'
 
@@ -143,6 +144,8 @@ export type GlobalRow = {
   currentScheduleId: number | null
   exportScale: number
   sidebarOpen: boolean
+  snapshotCursorId?: number | null
+  snapshotCursorScheduleId?: number | null
 }
 
 export type ScheduleComponentWithProps<
@@ -158,15 +161,38 @@ export type ScheduleSnapshot = {
   components: ScheduleComponentWithProps[]
 }
 
+export type SnapshotGlobalState = Pick<
+  GlobalRow,
+  'currentScheduleId' | 'exportScale' | 'sidebarOpen'
+>
+
+export type FilteredScheduleState = {
+  schedule: Schedule
+  global: SnapshotGlobalState
+  scheduleDays: ScheduleDay[]
+  components: ScheduleComponent[]
+  componentProps: ScheduleComponentProps[]
+}
+
+export type SnapshotRow = {
+  id?: number
+  scheduleId: number
+  prev: FilteredScheduleState | null
+  next: FilteredScheduleState
+  createdAt: number
+  reason?: string | null
+}
+
 export function getDefaultComponentProps<K extends ComponentKind>(
   kind: K,
 ): ComponentPropsMap[K] {
-  const makeRichText = (text: string) => [
-    {
-      type: 'paragraph',
-      children: [{ text }],
-    },
-  ] as Descendant[]
+  const makeRichText = (text: string) =>
+    [
+      {
+        type: 'paragraph',
+        children: [{ text }],
+      },
+    ] as Descendant[]
 
   const defaults: ComponentPropsMap = {
     text: {
