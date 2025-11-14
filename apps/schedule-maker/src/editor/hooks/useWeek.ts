@@ -1,5 +1,5 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useCallback } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from '../../types/Day'

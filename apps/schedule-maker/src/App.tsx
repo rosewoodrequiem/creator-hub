@@ -4,10 +4,11 @@ import * as htmlToImage from 'html-to-image'
 
 import ScaledPreview from './canvas/ScaledPreview'
 import SchedulePreview from './canvas/SchedulePreview'
-import TemplatePicker from './editor/components/TemplatePicker'
-import WeekPicker from './editor/components/WeekPicker'
 import { DayChecklist } from './editor/components/day-editor/DayChecklist'
 import { DayEditor } from './editor/components/day-editor/DayEditor'
+import TemplatePicker from './editor/components/TemplatePicker'
+import { UndoRedoControls } from './editor/components/UndoRedoControls'
+import WeekPicker from './editor/components/WeekPicker'
 import { db } from './store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from './types/Day'
 import { getDaysOrderedByWeekStart } from './utils/days'
@@ -77,7 +78,7 @@ function App() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <TemplatePicker />
           <label className="block text-xs">
             Export scale (1–4)
@@ -95,6 +96,10 @@ function App() {
               className="ml-2 w-20 rounded-lg border px-2 py-1"
             />
           </label>
+          <div className="ml-auto">
+            {' '}
+            <UndoRedoControls />
+          </div>
         </div>
 
         <WeekPicker />

@@ -34,6 +34,7 @@ export const DayPlanner = async (day: Day) => {
       ...update,
       updatedAt: Date.now(),
     })
+    db.requestSnapshotCapture('day-plan')
   }
 
   const setGameGraphic = async (file: File | null) => {
@@ -50,6 +51,7 @@ export const DayPlanner = async (day: Day) => {
         updatedAt: Date.now(),
       })
     }
+    db.requestSnapshotCapture('day-graphic')
   }
 
   return { dayPlan, setPlan, setGameGraphic }
