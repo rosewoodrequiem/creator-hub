@@ -16,6 +16,10 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",
-    "customConditions": ["@creator-hub/source"]
+    "baseUrl": ".",
+    "customConditions": ["@creator-hub/source"],
+    "paths": {
+      "@creator-hub/ui-kit": ["packages/ui-kit/src/index.ts"]
+    }
   }
 }

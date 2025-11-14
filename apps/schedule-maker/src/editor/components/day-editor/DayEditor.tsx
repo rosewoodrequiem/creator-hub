@@ -5,7 +5,6 @@ import { db } from '../../../store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from '../../../types/Day'
 import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
 import { useWeek } from '../../hooks/useWeek'
-
 import DayAccordion from './DayAccordion'
 
 interface DayEditorProps {
@@ -18,7 +17,7 @@ export function DayEditor({ days }: DayEditorProps) {
 
   const handleUpdateDayPlan = async (
     day: Day,
-    next: Partial<ScheduleDayPlan>
+    next: Partial<ScheduleDayPlan>,
   ) => {
     const dayPlanner = await DayPlanner(day)
     return dayPlanner.setPlan(next)

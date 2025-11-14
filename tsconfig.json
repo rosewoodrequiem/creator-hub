@@ -4,6 +4,9 @@
   "files": [],
   "references": [
     {
+      "path": "./packages/ui-kit"
+    },
+    {
       "path": "./apps/schedule-maker-e2e"
     }
   ]

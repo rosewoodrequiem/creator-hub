@@ -1,10 +1,9 @@
+import { Button } from '@creator-hub/ui-kit'
 import { useState } from 'react'
 
 import { Day } from '../../../types/Day'
 import { ScheduleDayPlan } from '../../../types/SheduleDayPlan'
 import { DAY_LABELS, fmtTime, shortMonthDay } from '../../../utils/date'
-import Button from '../../ui/Button'
-
 import DayInlineEditor from './DayInlineEditor'
 
 type Props = {

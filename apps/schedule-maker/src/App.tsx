@@ -1,13 +1,13 @@
+import { Button } from '@creator-hub/ui-kit'
 import { useLiveQuery } from 'dexie-react-hooks'
 import * as htmlToImage from 'html-to-image'
 
 import ScaledPreview from './canvas/ScaledPreview'
 import SchedulePreview from './canvas/SchedulePreview'
-import { DayChecklist } from './editor/components/day-editor/DayChecklist'
-import { DayEditor } from './editor/components/day-editor/DayEditor'
 import TemplatePicker from './editor/components/TemplatePicker'
 import WeekPicker from './editor/components/WeekPicker'
-import Button from './editor/ui/Button'
+import { DayChecklist } from './editor/components/day-editor/DayChecklist'
+import { DayEditor } from './editor/components/day-editor/DayEditor'
 import { db } from './store/schedule-maker-db/ScheduleMakerDB'
 import { Day } from './types/Day'
 import { getDaysOrderedByWeekStart } from './utils/days'
@@ -71,8 +71,7 @@ function App() {
           <div className="text-lg font-bold">Schedule Maker</div>
           <Button
             onClick={handleExport}
-            className="bg-[#111827] text-white"
-            hoverClass="hover:bg-black"
+            className="bg-[#111827] text-white hover:bg-black"
           >
             Export PNG
           </Button>
@@ -110,8 +109,7 @@ function App() {
           <div className="text-sm font-semibold">Hero image (optional)</div>
           <div className="flex items-center gap-3">
             <Button
-              className="bg-[--color-brand] text-black"
-              hoverClass="hover:brightness-105"
+              className="bg-[--color-brand] text-black hover:brightness-105"
               onClick={() =>
                 document.getElementById('hero-file-input')?.click()
               }

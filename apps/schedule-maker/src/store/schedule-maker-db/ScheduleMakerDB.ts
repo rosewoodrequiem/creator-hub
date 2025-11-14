@@ -5,39 +5,87 @@ import { DB } from '../../dexie'
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import { Week } from '../../types/Week'
-
 import { emptyWeek } from './ScheduleMakerDB.helpers'
+import {
+  ComponentKind,
+  ComponentPropsMap,
+  GlobalRow,
+  ImageComponentProps,
+  ImageRow,
+  Schedule,
+  ScheduleComponent,
+  ScheduleComponentProps,
+  ScheduleComponentWithProps,
+  ScheduleDay,
+  ScheduleSnapshot,
+  Theme,
+  getDefaultComponentProps,
+} from './SheduleMakerDB.types'
 import { seed } from './seed'
-import { ImageRow } from './SheduleMakerDB.types'
 
 const DB_NAME = 'schedule-maker'
 const GLOBAL_ROW_ID = 1
-const SCHEDULE_DATA_ROW_ID = 1
 const DEFAULT_TEMPLATE: TemplateId = 'ElegantBlue'
 const DEFAULT_EXPORT_SCALE = 2
 const DEFAULT_TIMEZONE =
   Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
-export class ScheduleMakerDB extends Dexie {
+const FALLBACK_THEME = {
+  slug: DEFAULT_TEMPLATE,
+  name: 'Elegant Blue',
+  description: 'Soft gradients and friendly typography for VTuber schedules.',
+  colors: [
+    { id: 'primary', label: 'Primary', value: '#7aa5d6' },
+    { id: 'secondary', label: 'Secondary', value: '#f9d8ff' },
+    { id: 'text', label: 'Body Text', value: '#1d2430' },
+    { id: 'background', label: 'Canvas', value: '#f4f8ff' },
+    { id: 'card', label: 'Card', value: '#ffffff' },
+  ],
+  fonts: [
+    { id: 'heading', label: 'Heading', family: 'Poppins, sans-serif' },
+    { id: 'body', label: 'Body', family: 'Inter, sans-serif' },
+  ],
+  radii: { none: 0, sm: 4, md: 12, lg: 24, pill: 999 },
+} as const
+
+const DAYS_ORDER = [
+  Day.MON,
+  Day.TUE,
+  Day.WED,
+  Day.THU,
+  Day.FRI,
+  Day.SAT,
+  Day.SUN,
+]
+
+export class ScheduleMakerDB extends Dexie implements DB {
+  images!: DB['images']
+  schedules!: DB['schedules']
+  scheduleDays!: DB['scheduleDays']
+  components!: DB['components']
+  componentProps!: DB['componentProps']
+  themes!: DB['themes']
+  global!: DB['global']
+
   constructor() {
     super(DB_NAME, { addons: [relationships] })
 
     this.version(1).stores({
-      images: '++id',
-      schedules: '++id, name, updatedAt',
-      scheduleData: '++id, weekStart, weekAnchor, timezone, heroUrl',
-      scheduleDayPlan:
-        '++id, day, gameName, time, gameGraphic -> images.id, enabled',
-      components: '++id, scheduleId -> schedules.id, kind, zIndex, updatedAt',
-      global: '++id, currentScheduleId -> schedules.id',
+      images: '++id, name',
+      themes: '++id, slug, name',
+      schedules: '++id, name, themeId, updatedAt',
+      scheduleDays: '++id, scheduleId, day',
+      components: '++id, scheduleId, kind, zIndex, updatedAt',
+      componentProps: '++id, componentId, kind',
+      global: '++id, currentScheduleId',
     })
 
-    // 🔑 Bind tables at runtime (this is what interface merging doesn't do)
     this.images = this.table('images')
+    this.themes = this.table('themes')
     this.schedules = this.table('schedules')
-    this.scheduleData = this.table('scheduleData')
-    this.scheduleDayPlan = this.table('scheduleDayPlan')
+    this.scheduleDays = this.table('scheduleDays')
     this.components = this.table('components')
+    this.componentProps = this.table('componentProps')
     this.global = this.table('global')
 
     this.on('populate', function (transaction) {
@@ -50,48 +98,111 @@ export class ScheduleMakerDB extends Dexie {
   }
 
   get weekStart() {
-    return this.ensureScheduleDataRow().then((d) => d.weekStart ?? Day.MON)
+    return this.ensureCurrentSchedule().then((s) => s.weekStart ?? Day.MON)
   }
+
   get weekAnchor() {
-    return this.ensureScheduleDataRow().then((d) => d.weekAnchor ?? new Date())
+    return this.ensureCurrentSchedule().then((s) => new Date(s.weekAnchor))
   }
 
   get heroUrl() {
-    return this.ensureScheduleDataRow().then((d) => {
-      const imageId = d.heroUrl
-      if (!imageId) return undefined
-      return this.images.get(imageId).then((img) => img?.data)
-    })
+    return this.getHeroImageData()
   }
 
   get timezone() {
-    return this.ensureScheduleDataRow().then(
-      (d) => d.timezone ?? DEFAULT_TIMEZONE
+    return this.ensureCurrentSchedule().then(
+      (s) => s.timezone ?? DEFAULT_TIMEZONE,
     )
   }
 
   get exportScale() {
     return this.ensureGlobalRow().then(
-      (g) => g.exportScale ?? DEFAULT_EXPORT_SCALE
+      (g) => g.exportScale ?? DEFAULT_EXPORT_SCALE,
     )
   }
 
-  get currentTemplate() {
-    return this.ensureCurrentScheduleId().then(async (id) => {
-      if (!id) return DEFAULT_TEMPLATE
-      const schedule = await this.schedules.get(id)
-      return schedule?.themeId ?? DEFAULT_TEMPLATE
-    })
+  get currentTemplate(): PromiseExtended<TemplateId> {
+    return Dexie.Promise.resolve().then(async () => {
+      const schedule = await this.ensureCurrentSchedule()
+      if (!schedule.themeId) return DEFAULT_TEMPLATE
+      const theme = await this.themes.get(schedule.themeId)
+      return theme?.slug ?? DEFAULT_TEMPLATE
+    }) as PromiseExtended<TemplateId>
+  }
+
+  get week(): PromiseExtended<Week> {
+    return Dexie.Promise.resolve().then(async () => {
+      const scheduleId = await this.ensureCurrentScheduleId()
+      if (!scheduleId) {
+        return { ...emptyWeek }
+      }
+
+      const week: Week = { ...emptyWeek }
+      const rows = await this.scheduleDays.where({ scheduleId }).toArray()
+
+      if (rows.length < DAYS_ORDER.length) {
+        await this.ensureScheduleDays(scheduleId, rows)
+        return this.week
+      }
+
+      const imageIdSet = new Set<number>()
+      for (const row of rows) {
+        if (typeof row.imageId === 'number') imageIdSet.add(row.imageId)
+        if (typeof row.backgroundImageId === 'number') {
+          imageIdSet.add(row.backgroundImageId)
+        }
+      }
+      const imageIds = Array.from(imageIdSet)
+
+      const images = await this.images.bulkGet(imageIds)
+      const imageMap = new Map<number, ImageRow | undefined>()
+      imageIds.forEach((id, idx) => imageMap.set(id, images[idx]))
+
+      for (const row of rows) {
+        const gameGraphic =
+          typeof row.imageId === 'number'
+            ? imageMap.get(row.imageId)?.data
+            : undefined
+        const backgroundGraphic =
+          typeof row.backgroundImageId === 'number'
+            ? imageMap.get(row.backgroundImageId)?.data
+            : undefined
+        week[row.day] = {
+          ...row,
+          gameGraphic,
+          backgroundGraphic,
+        }
+      }
+
+      return week
+    }) as PromiseExtended<Week>
   }
 
   async setWeekStart(day: Day) {
-    const data = await this.ensureScheduleDataRow()
-    await this.scheduleData.put({ ...data, weekStart: day })
+    const schedule = await this.ensureCurrentSchedule()
+    await this.schedules.put({
+      ...schedule,
+      weekStart: day,
+      updatedAt: Date.now(),
+    })
   }
 
   async setWeekAnchor(anchor: Date) {
-    const data = await this.ensureScheduleDataRow()
-    await this.scheduleData.put({ ...data, weekAnchor: new Date(anchor) })
+    const schedule = await this.ensureCurrentSchedule()
+    await this.schedules.put({
+      ...schedule,
+      weekAnchor: anchor.toISOString(),
+      updatedAt: Date.now(),
+    })
+  }
+
+  async setTimezone(timezone: string) {
+    const schedule = await this.ensureCurrentSchedule()
+    await this.schedules.put({
+      ...schedule,
+      timezone,
+      updatedAt: Date.now(),
+    })
   }
 
   async setExportScale(scale: number) {
@@ -100,92 +211,40 @@ export class ScheduleMakerDB extends Dexie {
   }
 
   async setCurrentTemplate(template: TemplateId) {
-    const scheduleId = await this.ensureCurrentScheduleId()
-    if (!scheduleId) throw new Error('No schedule available to update')
-    await this.schedules.update(scheduleId, {
-      themeId: template,
+    const schedule = await this.ensureCurrentSchedule()
+    const theme = await this.themes.where('slug').equals(template).first()
+    if (!theme?.id) {
+      throw new Error(`Theme ${template} not found`)
+    }
+
+    await this.schedules.put({
+      ...schedule,
+      themeId: theme.id,
       updatedAt: Date.now(),
     })
   }
 
   async setHeroImage(file: File | null) {
-    const data = await this.ensureScheduleDataRow()
-    if (file) {
-      const id = await this.uploadImage(file)
-      await this.scheduleData.put({ ...data, heroUrl: id })
-      return
-    }
+    const scheduleId = await this.ensureCurrentScheduleId()
+    if (!scheduleId) throw new Error('No schedule selected')
 
-    await this.scheduleData.put({ ...data, heroUrl: undefined })
+    const hero = await this.components
+      .where({ scheduleId, kind: 'image' })
+      .first()
+    if (!hero?.id) return
+
+    const imageId = file ? await this.uploadImage(file) : undefined
+    await this.upsertImageComponentProps(hero.id, imageId)
   }
 
-  /**
-   * 🗓️ Get all scheduleDayPlan rows for Mon–Sun.
-   */
-  get week(): PromiseExtended<Week> {
-    const daysOrder = [
-      Day.MON,
-      Day.TUE,
-      Day.WED,
-      Day.THU,
-      Day.FRI,
-      Day.SAT,
-      Day.SUN,
-    ]
-
-    return this.scheduleDayPlan
-      .where('day')
-      .anyOf(...daysOrder)
-      .toArray()
-      .then(async (rows) => {
-        // collect unique image ids
-        const ids = Array.from(
-          new Set(
-            rows
-              .map((r) => r.gameGraphic)
-              .filter((v): v is number => typeof v === 'number')
-          )
-        )
-
-        // bulk fetch images and map id -> row
-        const imgs = await this.images.bulkGet(ids)
-        const imgMap = new Map<number, ImageRow | undefined>()
-        ids.forEach((id, i) => imgMap.set(id, imgs[i]))
-
-        // build a fresh week (never mutate a shared constant)
-        const week: Week = { ...emptyWeek }
-
-        for (const r of rows) {
-          const imageUrl =
-            typeof r.gameGraphic === 'number'
-              ? imgMap.get(r.gameGraphic)?.data
-              : undefined
-          week[r.day] = { ...r, gameGraphic: imageUrl }
-        }
-
-        // ensure all 7 days exist even if missing in DB
-        for (const d of daysOrder) {
-          if (!week[d]) {
-            console.warn(
-              `Missing scheduleDayPlan for day ${d}, inserting default`
-            )
-            const id = await this.scheduleDayPlan.add(defaultScheduleDay(d))
-            const newDay = await this.scheduleDayPlan.get(id)
-            week[d] = { ...newDay!, gameGraphic: undefined }
-          }
-        }
-
-        return week
-      })
-  }
-  /**
-   * Toggle a day's enabled state
-   * @param day Day enum
-   * @throws Error if no plan found for the day
-   */
   async toggleDayEnabled(day: Day, enabled: boolean) {
-    return this.scheduleDayPlan.where({ day }).modify((plan) => {
-      plan.enabled = enabled
+    const scheduleId = await this.ensureCurrentScheduleId()
+    if (!scheduleId) throw new Error('No schedule selected')
+
+    const now = Date.now()
+    await this.scheduleDays.where({ scheduleId, day }).modify((row) => {
+      row.enabled = enabled
+      row.updatedAt = now
     })
   }
 
@@ -201,8 +260,12 @@ export class ScheduleMakerDB extends Dexie {
             return
           }
 
-          // Dexie .add() resolves to the generated primary key (number)
-          const id = await this.images.add({ data: dataUrl })
+          const createdAt = Date.now()
+          const id = await this.images.add({
+            data: dataUrl,
+            name: file.name,
+            createdAt,
+          })
           resolve(id)
         } catch (err) {
           reject(err)
@@ -214,9 +277,260 @@ export class ScheduleMakerDB extends Dexie {
     })
   }
 
-  private async ensureGlobalRow() {
+  async getComponentWithProps(componentId: number): Promise<{
+    component: ScheduleComponent
+    props: ScheduleComponentProps | undefined
+  } | null> {
+    const component = await this.components.get(componentId)
+    if (!component) return null
+    const props = await this.componentProps.where({ componentId }).first()
+    return { component, props: props ?? undefined }
+  }
+
+  async updateComponentProps<K extends ComponentKind>(
+    componentId: number,
+    kind: K,
+    patch: Partial<ComponentPropsMap[K]>,
+  ) {
+    const component = await this.components.get(componentId)
+    if (!component) {
+      throw new Error(`Component ${componentId} not found`)
+    }
+
+    const resolvedKind = component.kind as K
+    const now = Date.now()
+    const existing = await this.componentProps.where({ componentId }).first()
+
+    const base: ComponentPropsMap[K] =
+      existing && (existing.kind as ComponentKind) === resolvedKind
+        ? { ...(existing.data as ComponentPropsMap[K]) }
+        : getDefaultComponentProps(resolvedKind)
+
+    const data = { ...base, ...patch }
+
+    if (existing?.id) {
+      await this.componentProps.update(existing.id, {
+        data,
+        kind: resolvedKind,
+        updatedAt: now,
+      })
+      return
+    }
+
+    await this.componentProps.add({
+      componentId,
+      kind: resolvedKind,
+      data,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
+
+  async updateScheduleDay(day: Day, patch: Partial<ScheduleDay>) {
+    const scheduleId = await this.ensureCurrentScheduleId()
+    if (!scheduleId) throw new Error('No schedule selected')
+    const now = Date.now()
+
+    await this.scheduleDays.where({ scheduleId, day }).modify((row) => {
+      Object.assign(row, patch)
+      row.updatedAt = now
+    })
+  }
+
+  async getScheduleSnapshot(): Promise<ScheduleSnapshot | null> {
+    const schedule = await this.ensureCurrentSchedule()
+    if (!schedule?.id) return null
+
+    const [theme, week] = await Promise.all([
+      this.resolveTheme(schedule.themeId),
+      this.week,
+    ])
+
+    const components = await this.components
+      .where({ scheduleId: schedule.id })
+      .toArray()
+
+    const componentIds = components
+      .map((component) => component.id)
+      .filter((id): id is number => typeof id === 'number')
+
+    const propsRows = componentIds.length
+      ? await this.componentProps
+          .where('componentId')
+          .anyOf(componentIds)
+          .toArray()
+      : []
+
+    const propsMap = new Map<number, ScheduleComponentProps>()
+    propsRows.forEach((row) => propsMap.set(row.componentId, row))
+
+    const assetIds = new Set<number>()
+    for (const row of propsRows) {
+      if (row.kind === 'image') {
+        const data = row.data as ImageComponentProps
+        if (typeof data.imageId === 'number') assetIds.add(data.imageId)
+      }
+      if (row.kind === 'day-card') {
+        const data = row.data as ComponentPropsMap['day-card']
+        if (typeof data.backgroundImageId === 'number') {
+          assetIds.add(data.backgroundImageId)
+        }
+      }
+    }
+
+    const assetIdList = Array.from(assetIds)
+    const assetRows = assetIdList.length
+      ? await this.images.bulkGet(assetIdList)
+      : []
+    const assetMap = new Map<number, ImageRow | undefined>()
+    assetIdList.forEach((id, idx) => assetMap.set(id, assetRows[idx]))
+
+    const componentsWithProps: ScheduleComponentWithProps[] = components
+      .filter((component) => component.visible !== false)
+      .map((component) => {
+        const stored =
+          (component.id && propsMap.get(component.id)?.data) ??
+          getDefaultComponentProps(component.kind)
+        let props: ComponentPropsMap[typeof component.kind]
+
+        if (component.kind === 'text') {
+          props = { ...(stored as ComponentPropsMap['text']) }
+        } else if (component.kind === 'image') {
+          const typed = { ...(stored as ComponentPropsMap['image']) }
+          if (typeof typed.imageId === 'number') {
+            typed.imageUrl = assetMap.get(typed.imageId)?.data
+          } else {
+            typed.imageUrl = undefined
+          }
+          props = typed
+        } else {
+          const typed = { ...(stored as ComponentPropsMap['day-card']) }
+          if (typeof typed.backgroundImageId === 'number') {
+            typed.backgroundImageUrl = assetMap.get(
+              typed.backgroundImageId,
+            )?.data
+          } else {
+            typed.backgroundImageUrl = undefined
+          }
+          props = typed
+        }
+
+        return {
+          ...component,
+          props,
+        }
+      })
+
+    componentsWithProps.sort((a, b) => a.zIndex - b.zIndex)
+
+    return { schedule, theme, week, components: componentsWithProps }
+  }
+
+  private async ensureScheduleDays(
+    scheduleId: number,
+    existing: ScheduleDay[],
+  ) {
+    const existingDays = new Set(existing.map((row) => row.day))
+    const now = Date.now()
+    const missing = DAYS_ORDER.filter((day) => !existingDays.has(day)).map(
+      (day) => ({
+        scheduleId,
+        day,
+        enabled: false,
+        gameName: '',
+        time: '',
+        imageId: undefined,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    )
+
+    if (missing.length > 0) {
+      await this.scheduleDays.bulkAdd(missing)
+    }
+  }
+
+  private async resolveTheme(themeId: number | null): Promise<Theme> {
+    if (themeId) {
+      const theme = await this.themes.get(themeId)
+      if (theme) return theme
+    }
+
+    const fallback = await this.themes.toCollection().first()
+    if (fallback) return fallback
+
+    const now = Date.now()
+    const newId = await this.themes.add({
+      ...FALLBACK_THEME,
+      createdAt: now,
+      updatedAt: now,
+    })
+    const created = await this.themes.get(newId)
+    if (!created) {
+      throw new Error('Failed to create fallback theme record')
+    }
+    return created
+  }
+
+  private async getHeroImageData() {
+    const scheduleId = await this.ensureCurrentScheduleId()
+    if (!scheduleId) return undefined
+
+    const hero = await this.components
+      .where({ scheduleId, kind: 'image' })
+      .first()
+    if (!hero?.id) return undefined
+
+    const props = await this.componentProps
+      .where({ componentId: hero.id })
+      .first()
+    const imageId = (props?.data as ImageComponentProps | undefined)?.imageId
+    if (typeof imageId !== 'number') return undefined
+
+    const image = await this.images.get(imageId)
+    return image?.data
+  }
+
+  private async upsertImageComponentProps(
+    componentId: number,
+    imageId: number | undefined,
+  ) {
+    const now = Date.now()
+    const existing = await this.componentProps.where({ componentId }).first()
+    const defaults: ImageComponentProps = {
+      fit: 'contain',
+      opacity: 1,
+      borderRadiusToken: 'lg',
+      alt: 'Hero artwork',
+      imageId: undefined,
+    }
+
+    const previous = (existing?.data as ImageComponentProps | undefined) ?? {}
+    const nextData: ImageComponentProps = {
+      ...defaults,
+      ...previous,
+      imageId,
+    }
+
+    if (existing?.id) {
+      await this.componentProps.update(existing.id, {
+        data: nextData,
+        updatedAt: now,
+      })
+      return
+    }
+
+    await this.componentProps.add({
+      componentId,
+      kind: 'image',
+      data: nextData,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
+
+  private async ensureGlobalRow(): Promise<GlobalRow> {
     let row = await this.global.get(GLOBAL_ROW_ID)
-    let needsUpdate = false
     if (!row) {
       row = {
         id: GLOBAL_ROW_ID,
@@ -224,54 +538,50 @@ export class ScheduleMakerDB extends Dexie {
         exportScale: DEFAULT_EXPORT_SCALE,
         sidebarOpen: true,
       }
-      needsUpdate = true
-    } else {
-      const next = { ...row }
-      if (typeof next.exportScale !== 'number') {
-        next.exportScale = DEFAULT_EXPORT_SCALE
-        needsUpdate = true
-      }
-      if (typeof next.sidebarOpen !== 'boolean') {
-        next.sidebarOpen = true
-        needsUpdate = true
-      }
-      row = next
+      await this.global.put(row)
+      return row
     }
 
-    if (needsUpdate) await this.global.put(row)
+    if (typeof row.exportScale !== 'number') {
+      row.exportScale = DEFAULT_EXPORT_SCALE
+    }
+
+    if (typeof row.sidebarOpen !== 'boolean') {
+      row.sidebarOpen = true
+    }
+
     return row
   }
 
-  private async ensureScheduleDataRow() {
-    let row = await this.scheduleData.get(SCHEDULE_DATA_ROW_ID)
-    let needsUpdate = false
-    if (!row) {
-      row = {
-        id: SCHEDULE_DATA_ROW_ID,
-        weekStart: Day.MON,
-        weekAnchor: new Date(),
-        timezone: DEFAULT_TIMEZONE,
-      }
-      needsUpdate = true
-    } else {
-      const next = { ...row }
-      if (!next.weekStart) {
-        next.weekStart = Day.MON
-        needsUpdate = true
-      }
-      if (!next.weekAnchor) {
-        next.weekAnchor = new Date()
-        needsUpdate = true
-      }
-      if (!next.timezone) {
-        next.timezone = DEFAULT_TIMEZONE
-        needsUpdate = true
-      }
-      row = next
+  private async ensureCurrentSchedule(): Promise<Schedule> {
+    const scheduleId = await this.ensureCurrentScheduleId()
+    if (scheduleId) {
+      const existing = await this.schedules.get(scheduleId)
+      if (existing) return existing
     }
 
-    if (needsUpdate) await this.scheduleData.put(row)
-    return row
+    const first = await this.schedules.toCollection().first()
+    if (first?.id) {
+      const global = await this.ensureGlobalRow()
+      await this.global.put({ ...global, currentScheduleId: first.id })
+      return first
+    }
+
+    const now = Date.now()
+    const newId = await this.schedules.add({
+      name: 'My Schedule',
+      themeId: null,
+      weekStart: Day.MON,
+      weekAnchor: new Date().toISOString(),
+      timezone: DEFAULT_TIMEZONE,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    const created = await this.schedules.get(newId)
+    const global = await this.ensureGlobalRow()
+    await this.global.put({ ...global, currentScheduleId: newId })
+    return created!
   }
 
   private async ensureCurrentScheduleId(): Promise<number | null> {
@@ -290,11 +600,3 @@ export class ScheduleMakerDB extends Dexie {
 
 export interface ScheduleMakerDB extends DB {}
 export const db = new ScheduleMakerDB()
-function defaultScheduleDay(d: Day): import('../../dexie').DBScheduleDayPlan {
-  return {
-    day: d,
-    gameName: '',
-    time: '',
-    enabled: false,
-  }
-}

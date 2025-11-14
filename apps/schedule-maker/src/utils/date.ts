@@ -1,4 +1,5 @@
 import { Day } from '../types/Day'
+
 export const DAY_LABELS: Record<Day, string> = {
   [Day.SUN]: 'Sunday',
   [Day.MON]: 'Monday',
