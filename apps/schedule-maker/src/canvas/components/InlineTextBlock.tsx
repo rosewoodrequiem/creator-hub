@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  JSX,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
+  type BaseText,
   type Descendant,
   Node,
   Range,
+  Element as SlateElement,
   Text,
   Transforms,
   createEditor,
@@ -179,7 +189,12 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     setDisplayNodes(cloned)
     setEditorKey((key) => key + 1)
     setDisplayText(toPlainText(cloned))
-  }, [component.props.text, serializedRichText, dirty])
+  }, [
+    component.props.richText,
+    component.props.text,
+    serializedRichText,
+    dirty,
+  ])
 
   useEffect(() => {
     if (styleDirty) {
@@ -275,7 +290,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
           split: true,
         })
       })
-      Transforms.setNodes(editor, style, {
+      Transforms.setNodes<InlineLeaf>(editor, style as Partial<InlineLeaf>, {
         match: Text.isText,
         split: true,
       })
@@ -412,6 +427,132 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     wasSelectedRef.current = isSelected
   }, [isSelected, editor])
 
+  const toolbarPortal: ReactNode =
+    isFocused && toolbarPos
+      ? createPortal(
+          <div
+            className="pointer-events-none fixed z-[4000] rounded-full border border-white/70 bg-white px-4 py-2 shadow-2xl"
+            style={{
+              top: toolbarPos.top,
+              left: toolbarPos.left,
+              transform: 'translate(-50%, -50%)',
+            }}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              toolbarPointerRef.current = true
+            }}
+            onPointerUp={(event) => {
+              event.preventDefault()
+              toolbarPointerRef.current = false
+              ReactEditor.focus(editor)
+            }}
+          >
+            <div className="pointer-events-auto flex gap-2">
+              <ToolbarButton
+                label={
+                  STYLE_PRESETS.find(
+                    (preset) =>
+                      preset.fontSize === styleState.fontSize &&
+                      preset.fontId === styleState.fontId,
+                  )?.label ?? 'Style'
+                }
+                active={activeMenu === 'style'}
+                onToggle={() =>
+                  setActiveMenu(activeMenu === 'style' ? null : 'style')
+                }
+                menu={
+                  <ToolbarMenu>
+                    {STYLE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className="w-full rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          applyPreset(preset.id)
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </ToolbarMenu>
+                }
+              />
+              <ToolbarButton
+                label={`${styleState.fontSize}px`}
+                active={activeMenu === 'size'}
+                onToggle={() =>
+                  setActiveMenu(activeMenu === 'size' ? null : 'size')
+                }
+                menu={
+                  <ToolbarMenu>
+                    {FONT_SIZES.map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        className="w-full rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          applyFontSize(size)
+                        }}
+                      >
+                        {size}px
+                      </button>
+                    ))}
+                  </ToolbarMenu>
+                }
+              />
+              <ToolbarButton
+                label=""
+                swatch={currentColor}
+                active={activeMenu === 'color'}
+                onToggle={() =>
+                  setActiveMenu(activeMenu === 'color' ? null : 'color')
+                }
+                menu={
+                  <ToolbarMenu>
+                    <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+                      {theme.colors.map((colorToken) => (
+                        <button
+                          key={colorToken.id}
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            applyThemeColor(colorToken.id)
+                          }}
+                        >
+                          <span
+                            className="h-3.5 w-3.5 rounded-full border border-black/10"
+                            style={{ backgroundColor: colorToken.value }}
+                          />
+                          {colorToken.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="w-full rounded-lg px-4 py-1.5 text-left text-sm text-brand-accent hover:bg-slate-100"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          colorInputRef.current?.click()
+                        }}
+                      >
+                        Custom…
+                      </button>
+                    </div>
+                  </ToolbarMenu>
+                }
+              />
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
+
   if (!isSelected) {
     return (
       <div
@@ -444,183 +585,62 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   }
 
   return (
-    <div
-      className="relative h-full w-full"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: alignment,
-      }}
-      ref={wrapperRef}
-      onClick={(event) => event.stopPropagation()}
-    >
-      <Slate
-        key={`${component.id}-${editorKey}`}
-        editor={editor}
-        initialValue={draft}
-        onChange={handleSlateChange}
+    <>
+      <div
+        className="relative h-full w-full"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: alignment,
+        }}
+        ref={wrapperRef}
+        onClick={(event) => event.stopPropagation()}
       >
-        {isFocused &&
-          toolbarPos &&
-          createPortal(
-            <div
-              className="pointer-events-none fixed z-[4000] rounded-full border border-white/70 bg-white px-4 py-2 shadow-2xl"
+        <Slate
+          key={`${component.id}-${editorKey}`}
+          editor={editor}
+          initialValue={draft}
+          onChange={handleSlateChange}
+        >
+          <div className="h-full w-full rounded-xl bg-transparent">
+            <Editable
+              spellCheck={false}
+              autoCorrect="off"
+              className="flex h-full w-full cursor-text select-text items-center rounded-xl bg-transparent outline-none"
               style={{
-                top: toolbarPos.top,
-                left: toolbarPos.left,
-                transform: 'translate(-50%, -50%)',
+                fontFamily,
+                fontSize: styleState.fontSize,
+                color,
+                textAlign: component.props.align,
+                letterSpacing: component.props.letterSpacing ?? 0,
+                lineHeight: component.props.lineHeight ?? 1.05,
               }}
-              onPointerDown={(event) => {
-                event.preventDefault()
-                toolbarPointerRef.current = true
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => {
+                if (toolbarPointerRef.current) {
+                  toolbarPointerRef.current = false
+                  setTimeout(() => ReactEditor.focus(editor), 0)
+                  return
+                }
+                setIsFocused(false)
+                setActiveMenu(null)
               }}
-              onPointerUp={(event) => {
-                event.preventDefault()
-                toolbarPointerRef.current = false
-                ReactEditor.focus(editor)
-              }}
-            >
-              <div className="pointer-events-auto flex gap-2">
-                <ToolbarButton
-                  label={
-                    STYLE_PRESETS.find(
-                      (preset) =>
-                        preset.fontSize === styleState.fontSize &&
-                        preset.fontId === styleState.fontId,
-                    )?.label ?? 'Style'
-                  }
-                  active={activeMenu === 'style'}
-                  onToggle={() =>
-                    setActiveMenu(activeMenu === 'style' ? null : 'style')
-                  }
-                  menu={
-                    <ToolbarMenu>
-                      {STYLE_PRESETS.map((preset) => (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          className="w-full rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={(event) => {
-                            event.preventDefault()
-                            applyPreset(preset.id)
-                          }}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </ToolbarMenu>
-                  }
-                />
-                <ToolbarButton
-                  label={`${styleState.fontSize}px`}
-                  active={activeMenu === 'size'}
-                  onToggle={() =>
-                    setActiveMenu(activeMenu === 'size' ? null : 'size')
-                  }
-                  menu={
-                    <ToolbarMenu>
-                      {FONT_SIZES.map((size) => (
-                        <button
-                          key={size}
-                          type="button"
-                          className="w-full rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={(event) => {
-                            event.preventDefault()
-                            applyFontSize(size)
-                          }}
-                        >
-                          {size}px
-                        </button>
-                      ))}
-                    </ToolbarMenu>
-                  }
-                />
-                <ToolbarButton
-                  label=""
-                  swatch={currentColor}
-                  active={activeMenu === 'color'}
-                  onToggle={() =>
-                    setActiveMenu(activeMenu === 'color' ? null : 'color')
-                  }
-                  menu={
-                    <ToolbarMenu>
-                      <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
-                        {theme.colors.map((colorToken) => (
-                          <button
-                            key={colorToken.id}
-                            type="button"
-                            className="flex w-full items-center gap-2 rounded-lg px-4 py-1.5 text-left text-sm hover:bg-slate-100"
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={(event) => {
-                              event.preventDefault()
-                              applyThemeColor(colorToken.id)
-                            }}
-                          >
-                            <span
-                              className="h-3.5 w-3.5 rounded-full border border-black/10"
-                              style={{ backgroundColor: colorToken.value }}
-                            />
-                            {colorToken.label}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="w-full rounded-lg px-4 py-1.5 text-left text-sm text-brand-accent hover:bg-slate-100"
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={(event) => {
-                            event.preventDefault()
-                            colorInputRef.current?.click()
-                          }}
-                        >
-                          Custom…
-                        </button>
-                      </div>
-                    </ToolbarMenu>
-                  }
-                />
-              </div>
-            </div>,
-            document.body,
-          )}
-        <div className="h-full w-full rounded-xl bg-transparent">
-          <Editable
-            spellCheck={false}
-            autoCorrect="off"
-            className="flex h-full w-full cursor-text select-text items-center rounded-xl bg-transparent outline-none"
-            style={{
-              fontFamily,
-              fontSize: styleState.fontSize,
-              color,
-              textAlign: component.props.align,
-              letterSpacing: component.props.letterSpacing ?? 0,
-              lineHeight: component.props.lineHeight ?? 1.05,
-            }}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => {
-              if (toolbarPointerRef.current) {
-                toolbarPointerRef.current = false
-                setTimeout(() => ReactEditor.focus(editor), 0)
-                return
-              }
-              setIsFocused(false)
-              setActiveMenu(null)
-            }}
-            renderLeaf={(leafProps) => (
-              <Leaf {...leafProps} theme={theme} baseStyle={styleState} />
-            )}
+              renderLeaf={(leafProps) => (
+                <Leaf {...leafProps} theme={theme} baseStyle={styleState} />
+              )}
+            />
+          </div>
+          <input
+            ref={colorInputRef}
+            type="color"
+            className="hidden"
+            defaultValue={currentColor}
+            onChange={(event) => applyCustomColor(event.target.value)}
           />
-        </div>
-        <input
-          ref={colorInputRef}
-          type="color"
-          className="hidden"
-          defaultValue={currentColor}
-          onChange={(event) => applyCustomColor(event.target.value)}
-        />
-      </Slate>
-    </div>
+        </Slate>
+      </div>
+      {toolbarPortal}
+    </>
   )
 }
 
@@ -680,7 +700,7 @@ type LeafComponentProps = RenderLeafProps & {
   }
 }
 
-type InlineLeaf = Text & InlineLeafStyle
+type InlineLeaf = BaseText & InlineLeafStyle
 
 function Leaf({
   attributes,
@@ -689,12 +709,14 @@ function Leaf({
   theme,
   baseStyle,
 }: LeafComponentProps) {
-  const resolvedFontId = (leaf.fontId as string | undefined) ?? baseStyle.fontId
+  const inlineLeaf = leaf as InlineLeaf
+  const resolvedFontId =
+    (inlineLeaf.fontId as string | undefined) ?? baseStyle.fontId
   const resolvedFontSize =
-    (leaf.fontSize as number | undefined) ?? baseStyle.fontSize
+    (inlineLeaf.fontSize as number | undefined) ?? baseStyle.fontSize
   const colorToken =
-    (leaf.colorToken as string | undefined) ?? baseStyle.colorToken
-  const colorValue = leaf.colorValue as string | undefined
+    (inlineLeaf.colorToken as string | undefined) ?? baseStyle.colorToken
+  const colorValue = inlineLeaf.colorValue as string | undefined
   const fontFamily = resolveThemeFont(
     theme,
     resolvedFontId,
@@ -743,9 +765,10 @@ function RichNode({
   baseStyle: LeafComponentProps['baseStyle']
 }): JSX.Element | null {
   if (Text.isText(node)) {
+    const previewAttributes = { 'data-slate-leaf': true as const }
     return (
       <Leaf
-        attributes={{}}
+        attributes={previewAttributes}
         leaf={node as InlineLeaf}
         theme={theme}
         baseStyle={baseStyle}
@@ -755,17 +778,12 @@ function RichNode({
     )
   }
 
-  if ('children' in node) {
-    const children = node.children?.map((child, index) => (
-      <RichNode
-        key={index}
-        node={child as Descendant}
-        theme={theme}
-        baseStyle={baseStyle}
-      />
+  if (SlateElement.isElement(node)) {
+    const children = node.children.map((child, index) => (
+      <RichNode key={index} node={child} theme={theme} baseStyle={baseStyle} />
     ))
 
-    if ((node as any).type === 'paragraph') {
+    if (node.type === 'paragraph') {
       return <span className="block whitespace-pre-wrap">{children}</span>
     }
     return <span className="whitespace-pre-wrap">{children}</span>

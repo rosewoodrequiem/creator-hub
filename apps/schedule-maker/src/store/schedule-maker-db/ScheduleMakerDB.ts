@@ -5,14 +5,11 @@ import { DB } from '../../dexie'
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import { Week } from '../../types/Week'
-
 import { emptyWeek } from './ScheduleMakerDB.helpers'
-import { seed } from './seed'
 import {
   ComponentKind,
   ComponentPropsMap,
   FilteredScheduleState,
-  getDefaultComponentProps,
   GlobalRow,
   ImageComponentProps,
   ImageRow,
@@ -24,7 +21,9 @@ import {
   ScheduleSnapshot,
   SnapshotRow,
   Theme,
+  getDefaultComponentProps,
 } from './SheduleMakerDB.types'
+import { seed } from './seed'
 
 const DB_NAME = 'schedule-maker'
 const GLOBAL_ROW_ID = 1
@@ -49,7 +48,7 @@ const FALLBACK_THEME = {
     { id: 'body', label: 'Body', family: 'Inter, sans-serif' },
   ],
   radii: { none: 0, sm: 4, md: 12, lg: 24, pill: 999 },
-} as const
+}
 
 const DAYS_ORDER = [
   Day.MON,
@@ -663,11 +662,13 @@ export class ScheduleMakerDB extends Dexie implements DB {
     try {
       await this.transaction(
         'rw',
-        this.schedules,
-        this.scheduleDays,
-        this.components,
-        this.componentProps,
-        this.global,
+        [
+          this.schedules,
+          this.scheduleDays,
+          this.components,
+          this.componentProps,
+          this.global,
+        ],
         async () => {
           await this.schedules.put(state.schedule)
 
