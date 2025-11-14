@@ -858,6 +858,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
   private async ensureGlobalRow(): Promise<GlobalRow> {
     let row = await this.global.get(GLOBAL_ROW_ID)
+    const canWrite = Dexie.currentTransaction?.mode !== 'readonly'
     if (!row) {
       row = {
         id: GLOBAL_ROW_ID,
@@ -867,37 +868,41 @@ export class ScheduleMakerDB extends Dexie implements DB {
         snapshotCursorId: null,
         snapshotCursorScheduleId: null,
       }
-      await this.global.put(row)
+      if (canWrite) {
+        await this.global.put(row)
+      }
       return row
     }
 
+    const next: GlobalRow = { ...row }
     let mutated = false
 
-    if (typeof row.exportScale !== 'number') {
-      row.exportScale = DEFAULT_EXPORT_SCALE
+    if (typeof next.exportScale !== 'number') {
+      next.exportScale = DEFAULT_EXPORT_SCALE
       mutated = true
     }
 
-    if (typeof row.sidebarOpen !== 'boolean') {
-      row.sidebarOpen = true
+    if (typeof next.sidebarOpen !== 'boolean') {
+      next.sidebarOpen = true
       mutated = true
     }
 
-    if (row.snapshotCursorId === undefined) {
-      row.snapshotCursorId = null
+    if (next.snapshotCursorId === undefined) {
+      next.snapshotCursorId = null
       mutated = true
     }
 
-    if (row.snapshotCursorScheduleId === undefined) {
-      row.snapshotCursorScheduleId = null
+    if (next.snapshotCursorScheduleId === undefined) {
+      next.snapshotCursorScheduleId = null
       mutated = true
     }
 
-    if (mutated) {
-      await this.global.put(row)
+    if (mutated && canWrite) {
+      await this.global.put(next)
+      return next
     }
 
-    return row
+    return mutated ? next : row
   }
 
   private async ensureCurrentSchedule(): Promise<Schedule> {
