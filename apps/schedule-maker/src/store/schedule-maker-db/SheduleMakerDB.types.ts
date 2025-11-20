@@ -150,9 +150,11 @@ export type GlobalRow = {
 
 export type ScheduleComponentWithProps<
   K extends ComponentKind = ComponentKind,
-> = ScheduleComponent<K> & {
-  props: ComponentPropsMap[K]
-}
+> = K extends ComponentKind
+  ? ScheduleComponent<K> & {
+      props: ComponentPropsMap[K]
+    }
+  : never
 
 export type ScheduleSnapshot = {
   schedule: Schedule
@@ -189,7 +191,6 @@ export function getDefaultComponentProps<K extends ComponentKind>(
   const makeRichText = (text: string) =>
     [
       {
-        type: 'paragraph',
         children: [{ text }],
       },
     ] as Descendant[]

@@ -15,7 +15,7 @@ import {
   shortMonthDay,
   weekDates,
 } from '../../utils/date'
-import { InlineTextBlock } from '../components/InlineTextBlock'
+import { InlineTextBlock } from '../components/inline-text-block/InlineTextBlock'
 import {
   resolveThemeColor,
   resolveThemeFont,

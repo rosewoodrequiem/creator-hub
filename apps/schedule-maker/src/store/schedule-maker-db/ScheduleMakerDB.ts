@@ -5,14 +5,11 @@ import { DB } from '../../dexie'
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import { Week } from '../../types/Week'
-
 import { emptyWeek } from './ScheduleMakerDB.helpers'
-import { seed } from './seed'
 import {
   ComponentKind,
   ComponentPropsMap,
   FilteredScheduleState,
-  getDefaultComponentProps,
   GlobalRow,
   ImageComponentProps,
   ImageRow,
@@ -24,7 +21,9 @@ import {
   ScheduleSnapshot,
   SnapshotRow,
   Theme,
+  getDefaultComponentProps,
 } from './SheduleMakerDB.types'
+import { seed } from './seed'
 
 const DB_NAME = 'schedule-maker'
 const GLOBAL_ROW_ID = 1
@@ -49,7 +48,7 @@ const FALLBACK_THEME = {
     { id: 'body', label: 'Body', family: 'Inter, sans-serif' },
   ],
   radii: { none: 0, sm: 4, md: 12, lg: 24, pill: 999 },
-} as const
+}
 
 const DAYS_ORDER = [
   Day.MON,
@@ -319,7 +318,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
   async updateComponentProps<K extends ComponentKind>(
     componentId: number,
-    kind: K,
+    _kind: K,
     patch: Partial<ComponentPropsMap[K]>,
   ) {
     const component = await this.components.get(componentId)
@@ -423,34 +422,40 @@ export class ScheduleMakerDB extends Dexie implements DB {
         const stored =
           (component.id && propsMap.get(component.id)?.data) ??
           getDefaultComponentProps(component.kind)
-        let props: ComponentPropsMap[typeof component.kind]
-
         if (component.kind === 'text') {
-          props = { ...(stored as ComponentPropsMap['text']) }
-        } else if (component.kind === 'image') {
-          const typed = { ...(stored as ComponentPropsMap['image']) }
-          if (typeof typed.imageId === 'number') {
-            typed.imageUrl = assetMap.get(typed.imageId)?.data
-          } else {
-            typed.imageUrl = undefined
-          }
-          props = typed
-        } else {
-          const typed = { ...(stored as ComponentPropsMap['day-card']) }
-          if (typeof typed.backgroundImageId === 'number') {
-            typed.backgroundImageUrl = assetMap.get(
-              typed.backgroundImageId,
-            )?.data
-          } else {
-            typed.backgroundImageUrl = undefined
-          }
-          props = typed
+          const props = { ...(stored as ComponentPropsMap['text']) }
+          return {
+            ...component,
+            kind: 'text',
+            props,
+          } satisfies ScheduleComponentWithProps<'text'>
         }
 
+        if (component.kind === 'image') {
+          const props = { ...(stored as ComponentPropsMap['image']) }
+          if (typeof props.imageId === 'number') {
+            props.imageUrl = assetMap.get(props.imageId)?.data
+          } else {
+            props.imageUrl = undefined
+          }
+          return {
+            ...component,
+            kind: 'image',
+            props,
+          } satisfies ScheduleComponentWithProps<'image'>
+        }
+
+        const props = { ...(stored as ComponentPropsMap['day-card']) }
+        if (typeof props.backgroundImageId === 'number') {
+          props.backgroundImageUrl = assetMap.get(props.backgroundImageId)?.data
+        } else {
+          props.backgroundImageUrl = undefined
+        }
         return {
           ...component,
+          kind: 'day-card',
           props,
-        }
+        } satisfies ScheduleComponentWithProps<'day-card'>
       })
 
     componentsWithProps.sort((a, b) => a.zIndex - b.zIndex)
@@ -663,11 +668,13 @@ export class ScheduleMakerDB extends Dexie implements DB {
     try {
       await this.transaction(
         'rw',
-        this.schedules,
-        this.scheduleDays,
-        this.components,
-        this.componentProps,
-        this.global,
+        [
+          this.schedules,
+          this.scheduleDays,
+          this.components,
+          this.componentProps,
+          this.global,
+        ],
         async () => {
           await this.schedules.put(state.schedule)
 
@@ -858,6 +865,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
   private async ensureGlobalRow(): Promise<GlobalRow> {
     let row = await this.global.get(GLOBAL_ROW_ID)
+    const canWrite = Dexie.currentTransaction?.mode !== 'readonly'
     if (!row) {
       row = {
         id: GLOBAL_ROW_ID,
@@ -867,37 +875,41 @@ export class ScheduleMakerDB extends Dexie implements DB {
         snapshotCursorId: null,
         snapshotCursorScheduleId: null,
       }
-      await this.global.put(row)
+      if (canWrite) {
+        await this.global.put(row)
+      }
       return row
     }
 
+    const next: GlobalRow = { ...row }
     let mutated = false
 
-    if (typeof row.exportScale !== 'number') {
-      row.exportScale = DEFAULT_EXPORT_SCALE
+    if (typeof next.exportScale !== 'number') {
+      next.exportScale = DEFAULT_EXPORT_SCALE
       mutated = true
     }
 
-    if (typeof row.sidebarOpen !== 'boolean') {
-      row.sidebarOpen = true
+    if (typeof next.sidebarOpen !== 'boolean') {
+      next.sidebarOpen = true
       mutated = true
     }
 
-    if (row.snapshotCursorId === undefined) {
-      row.snapshotCursorId = null
+    if (next.snapshotCursorId === undefined) {
+      next.snapshotCursorId = null
       mutated = true
     }
 
-    if (row.snapshotCursorScheduleId === undefined) {
-      row.snapshotCursorScheduleId = null
+    if (next.snapshotCursorScheduleId === undefined) {
+      next.snapshotCursorScheduleId = null
       mutated = true
     }
 
-    if (mutated) {
-      await this.global.put(row)
+    if (mutated && canWrite) {
+      await this.global.put(next)
+      return next
     }
 
-    return row
+    return mutated ? next : row
   }
 
   private async ensureCurrentSchedule(): Promise<Schedule> {

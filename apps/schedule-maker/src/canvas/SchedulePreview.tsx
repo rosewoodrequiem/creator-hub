@@ -1,7 +1,6 @@
 import clsx from 'clsx'
 
 import type { Theme } from '../store/schedule-maker-db/SheduleMakerDB.types'
-
 import { CanvasComponentFrame } from './components/CanvasComponentFrame'
 import NoiseOverlay from './components/NoiseOverlay'
 import { SelectionEditorOverlay } from './components/SelectionEditorOverlay'

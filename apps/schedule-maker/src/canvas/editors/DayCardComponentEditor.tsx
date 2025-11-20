@@ -25,6 +25,7 @@ export function DayCardComponentEditor({ component, theme, snapshot }: Props) {
   }
 
   const updateDayPlan = (patch: Partial<typeof dayPlan>) => {
+    if (!patch) return
     void db.updateScheduleDay(component.props.day, patch)
   }
 

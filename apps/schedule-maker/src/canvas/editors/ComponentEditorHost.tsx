@@ -1,5 +1,5 @@
 import { Button, FloatingPanel } from '@creator-hub/ui-kit'
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 
 import type {
   ScheduleComponentWithProps,
@@ -7,7 +7,6 @@ import type {
   Theme,
 } from '../../store/schedule-maker-db/SheduleMakerDB.types'
 import { useCanvasStore } from '../state/useCanvasStore'
-
 import { DayCardComponentEditor } from './DayCardComponentEditor'
 import { ImageComponentEditor } from './ImageComponentEditor'
 
@@ -20,7 +19,7 @@ type Props = {
 export function ComponentEditorHost({ component, theme, snapshot }: Props) {
   const deselect = useCanvasStore((state) => state.deselect)
 
-  let content: ReactNode = null
+  let content: ReactElement | null = null
   let title = component.name
 
   switch (component.kind) {
@@ -54,7 +53,7 @@ export function ComponentEditorHost({ component, theme, snapshot }: Props) {
         </Button>
       }
     >
-      {content}
+      {content ? <>content</> : null}
     </FloatingPanel>
   )
 }
