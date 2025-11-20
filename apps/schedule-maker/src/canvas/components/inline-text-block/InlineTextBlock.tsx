@@ -9,7 +9,6 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  type BaseText,
   type Descendant,
   Node,
   Range,
@@ -19,21 +18,17 @@ import {
   createEditor,
 } from 'slate'
 import { withHistory } from 'slate-history'
-import {
-  Editable,
-  ReactEditor,
-  type RenderLeafProps,
-  Slate,
-  withReact,
-} from 'slate-react'
+import { Editable, ReactEditor, Slate, withReact } from 'slate-react'
 
-import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
+import { db } from '../../../store/schedule-maker-db/ScheduleMakerDB'
 import type {
   ScheduleComponentWithProps,
   Theme,
-} from '../../store/schedule-maker-db/SheduleMakerDB.types'
-import { useCanvasStore } from '../state/useCanvasStore'
-import { resolveThemeColor, resolveThemeFont } from '../theme/themeUtils'
+} from '../../../store/schedule-maker-db/SheduleMakerDB.types'
+import { useCanvasStore } from '../../state/useCanvasStore'
+import { resolveThemeColor, resolveThemeFont } from '../../theme/themeUtils'
+import { InlineLeaf, InlineLeafStyle } from './InlineTextBlock.types'
+import { Leaf, LeafComponentProps } from './Leaf'
 
 const STYLE_PRESETS = [
   {
@@ -71,13 +66,6 @@ const FONT_SIZES = [12, 16, 20, 24, 32, 48, 64]
 type InlineTextBlockProps = {
   component: ScheduleComponentWithProps<'text'>
   theme: Theme
-}
-
-type InlineLeafStyle = {
-  fontSize?: number
-  fontId?: string
-  colorToken?: string
-  colorValue?: string
 }
 
 export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
@@ -691,52 +679,6 @@ function ToolbarMenu({ children }: { children: React.ReactNode }) {
   return <div className="space-y-1">{children}</div>
 }
 
-type LeafComponentProps = RenderLeafProps & {
-  theme: Theme
-  baseStyle: {
-    fontSize: number
-    colorToken: string
-    fontId: string
-  }
-}
-
-type InlineLeaf = BaseText & InlineLeafStyle
-
-function Leaf({
-  attributes,
-  children,
-  leaf,
-  theme,
-  baseStyle,
-}: LeafComponentProps) {
-  const inlineLeaf = leaf as InlineLeaf
-  const resolvedFontId =
-    (inlineLeaf.fontId as string | undefined) ?? baseStyle.fontId
-  const resolvedFontSize =
-    (inlineLeaf.fontSize as number | undefined) ?? baseStyle.fontSize
-  const colorToken =
-    (inlineLeaf.colorToken as string | undefined) ?? baseStyle.colorToken
-  const colorValue = inlineLeaf.colorValue as string | undefined
-  const fontFamily = resolveThemeFont(
-    theme,
-    resolvedFontId,
-    'Poppins, sans-serif',
-  )
-  const color = colorValue
-    ? colorValue
-    : resolveThemeColor(theme, colorToken, '#0f172a')
-
-  return (
-    <span
-      {...attributes}
-      className="whitespace-pre-wrap"
-      style={{ fontFamily, fontSize: resolvedFontSize, color }}
-    >
-      {children}
-    </span>
-  )
-}
-
 function RichTextPreview({
   value,
   theme,
@@ -772,6 +714,7 @@ function RichNode({
         leaf={node as InlineLeaf}
         theme={theme}
         baseStyle={baseStyle}
+        text={node}
       >
         {node.text}
       </Leaf>
@@ -782,10 +725,6 @@ function RichNode({
     const children = node.children.map((child, index) => (
       <RichNode key={index} node={child} theme={theme} baseStyle={baseStyle} />
     ))
-
-    if (node.type === 'paragraph') {
-      return <span className="block whitespace-pre-wrap">{children}</span>
-    }
     return <span className="whitespace-pre-wrap">{children}</span>
   }
 
