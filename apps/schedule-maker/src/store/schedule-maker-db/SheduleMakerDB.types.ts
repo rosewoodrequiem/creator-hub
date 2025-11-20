@@ -194,7 +194,7 @@ export function getDefaultComponentProps<K extends ComponentKind>(
         type: 'paragraph',
         children: [{ text }],
       },
-    ] as Descendant[]
+    ] as unknown as Descendant[]
 
   const defaults: ComponentPropsMap = {
     text: {
