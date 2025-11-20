@@ -150,9 +150,11 @@ export type GlobalRow = {
 
 export type ScheduleComponentWithProps<
   K extends ComponentKind = ComponentKind,
-> = ScheduleComponent<K> & {
-  props: ComponentPropsMap[K]
-}
+> = K extends ComponentKind
+  ? ScheduleComponent<K> & {
+      props: ComponentPropsMap[K]
+    }
+  : never
 
 export type ScheduleSnapshot = {
   schedule: Schedule
