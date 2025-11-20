@@ -191,10 +191,9 @@ export function getDefaultComponentProps<K extends ComponentKind>(
   const makeRichText = (text: string) =>
     [
       {
-        type: 'paragraph',
         children: [{ text }],
       },
-    ] as unknown as Descendant[]
+    ] as Descendant[]
 
   const defaults: ComponentPropsMap = {
     text: {
