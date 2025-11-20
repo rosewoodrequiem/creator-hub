@@ -95,6 +95,11 @@ And join the Nx community:
 - Update preview to be composed of components that are editable.
 - todo / redo system
 
+* Repalce sidebar with top bar
+* Add components
+* move components
+* Add data
+
 ## TODO:
 
 Get schedule data in a way to resolve images
