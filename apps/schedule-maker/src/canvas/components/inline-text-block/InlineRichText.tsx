@@ -4,15 +4,12 @@ import {
   useMemo,
   useRef,
   useState,
-  type Dispatch,
+  type CSSProperties,
   type ReactNode,
-  type SetStateAction,
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
   type Descendant,
-  Editor,
-  Node,
   Range,
   Text,
   Transforms,
@@ -27,13 +24,21 @@ import type { Theme } from '../../../store/schedule-maker-db/SheduleMakerDB.type
 import { resolveThemeColor, resolveThemeFont } from '../../theme/themeUtils'
 import type { InlineLeaf, InlineLeafStyle } from './InlineTextBlock.types'
 import { Leaf } from './Leaf'
+import {
+  cloneDescendants,
+  fromPlainText,
+  type InlineSelectionSummary,
+  syncToolbarStyle,
+  toPlainText,
+  withLockText,
+} from './richTextHelpers'
 
 export type InlineRichTextStyle = {
   fontId: string
   fontSize: number
   colorToken: string
   textTransform?: 'uppercase' | 'none'
-  letterSpacing?: string
+  letterSpacing?: string | number
 }
 
 export type InlineRichTextAction = {
@@ -48,6 +53,8 @@ type Props = {
   baseStyle: InlineRichTextStyle
   lockText?: boolean
   actions?: InlineRichTextAction[]
+  textAlign?: CSSProperties['textAlign']
+  lineHeight?: number | string
   onChange: (payload: {
     content: Descendant[]
     text: string
@@ -62,6 +69,8 @@ export function InlineRichText({
   baseStyle,
   lockText = false,
   actions = [],
+  textAlign,
+  lineHeight,
   onChange,
 }: Props) {
   const editor = useMemo(
@@ -78,6 +87,11 @@ export function InlineRichText({
   )
   const [editorKey, setEditorKey] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
+  const [selectionSummary, setSelectionSummary] = useState<InlineSelectionSummary>(() => ({
+    fontSizes: [baseStyle.fontSize],
+    colorTokens: [baseStyle.colorToken],
+    fontIds: [baseStyle.fontId],
+  }))
   const [activeMenu, setActiveMenu] = useState<'style' | 'size' | 'color' | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number } | null>(null)
@@ -99,6 +113,11 @@ export function InlineRichText({
       colorToken: baseStyle.colorToken,
       textTransform: baseStyle.textTransform,
       letterSpacing: baseStyle.letterSpacing,
+    })
+    setSelectionSummary({
+      fontSizes: [baseStyle.fontSize],
+      colorTokens: [baseStyle.colorToken],
+      fontIds: [baseStyle.fontId],
     })
     setEditorKey((key) => key + 1)
   }, [
@@ -126,7 +145,7 @@ export function InlineRichText({
   const handleSlateChange = useCallback(
     (nextValue: Descendant[]) => {
       setDraft(nextValue)
-      syncToolbarStyle(editor, setStyleState, baseStyle)
+      syncToolbarStyle(editor, setStyleState, baseStyle, setSelectionSummary)
       const nextText = toPlainText(nextValue)
       void onChange({
         content: nextValue,
@@ -168,7 +187,7 @@ export function InlineRichText({
         match: Text.isText,
         split: true,
       })
-      syncToolbarStyle(editor, setStyleState, baseStyle)
+      syncToolbarStyle(editor, setStyleState, baseStyle, setSelectionSummary)
       return true
     },
     [baseStyle, editor],
@@ -211,7 +230,11 @@ export function InlineRichText({
           >
             <div className="pointer-events-auto flex gap-2">
               <ToolbarButton
-                label={`${styleState.fontSize}px`}
+                label={
+                  selectionSummary.fontSizes.length > 1
+                    ? 'Multiple'
+                    : `${styleState.fontSize}px`
+                }
                 active={activeMenu === 'size'}
                 onToggle={() =>
                   setActiveMenu(activeMenu === 'size' ? null : 'size')
@@ -242,7 +265,7 @@ export function InlineRichText({
                 }
               />
               <ToolbarButton
-                label="Color"
+                label={selectionSummary.colorTokens.length > 1 ? 'Multiple' : 'Color'}
                 swatch={currentColor}
                 active={activeMenu === 'color'}
                 onToggle={() =>
@@ -322,6 +345,8 @@ export function InlineRichText({
             fontSize: styleState.fontSize,
             color: resolveThemeColor(theme, styleState.colorToken, '#0f172a'),
             letterSpacing: styleState.letterSpacing,
+            textAlign,
+            lineHeight,
           }}
           renderLeaf={(leafProps) => (
             <Leaf {...leafProps} theme={theme} baseStyle={styleState} />
@@ -393,82 +418,4 @@ function ToolbarButton({
 
 function ToolbarMenu({ children }: { children: ReactNode }) {
   return <div className="space-y-1">{children}</div>
-}
-
-function fromPlainText(text?: string): Descendant[] {
-  const safe = typeof text === 'string' ? text : ''
-  return [
-    {
-      type: 'paragraph',
-      children: [{ text: safe }],
-    } as Descendant,
-  ]
-}
-
-function toPlainText(value: Descendant[]) {
-  return value.map((node) => Node.string(node)).join('\n')
-}
-
-function cloneDescendants(value: Descendant[]): Descendant[] {
-  return JSON.parse(JSON.stringify(value)) as Descendant[]
-}
-
-function syncToolbarStyle(
-  editor: Editor,
-  setStyleState: Dispatch<SetStateAction<InlineRichTextStyle>>,
-  base: InlineRichTextStyle,
-) {
-  const selection = editor.selection
-  if (!selection) return
-  const fontSizes = new Set<number>()
-  const fontIds = new Set<string>()
-  const colorTokens = new Set<string>()
-
-  const addLeaf = (leaf: Partial<InlineLeaf>) => {
-    const size = leaf.fontSize ?? base.fontSize
-    const font = leaf.fontId ?? base.fontId
-    const color = leaf.colorToken ?? (leaf as InlineLeaf).colorValue ?? base.colorToken
-    if (size) fontSizes.add(size)
-    if (font) fontIds.add(font)
-    if (color) colorTokens.add(color)
-  }
-
-  const marks = Editor.marks(editor) as Partial<InlineLeaf> | null
-  if (marks && Object.keys(marks).length > 0) addLeaf(marks)
-
-  for (const [node] of Editor.nodes(editor, {
-    at: selection,
-    match: Text.isText,
-  })) {
-    addLeaf(node as InlineLeaf)
-  }
-
-  setStyleState((prev) => ({
-    fontSize: fontSizes.size === 1 ? Array.from(fontSizes)[0] : prev.fontSize ?? base.fontSize,
-    fontId: fontIds.size === 1 ? Array.from(fontIds)[0] : prev.fontId ?? base.fontId,
-    colorToken:
-      colorTokens.size === 1
-        ? Array.from(colorTokens)[0]
-        : prev.colorToken ?? base.colorToken,
-    textTransform: prev.textTransform ?? base.textTransform,
-    letterSpacing: prev.letterSpacing ?? base.letterSpacing,
-  }))
-}
-
-function withLockText(editor: Editor, lock: boolean) {
-  if (!lock) return editor
-  const { apply } = editor
-  editor.apply = (op) => {
-    if (
-      op.type === 'insert_text' ||
-      op.type === 'remove_text' ||
-      op.type === 'insert_node' ||
-      op.type === 'merge_node' ||
-      op.type === 'split_node'
-    ) {
-      return
-    }
-    apply(op)
-  }
-  return editor
 }
