@@ -15,6 +15,7 @@ import {
   Element as SlateElement,
   Text,
   Transforms,
+  Editor,
   createEditor,
 } from 'slate'
 import { withHistory } from 'slate-history'
@@ -101,6 +102,14 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     colorToken: component.props.colorToken,
     fontId: component.props.fontId,
   }))
+  const [selectionSummary, setSelectionSummary] = useState(() => ({
+    fontSizes: [component.props.fontSize],
+    colorTokens: [component.props.colorToken],
+    fontIds: [component.props.fontId],
+    styleLabels: ['Style'],
+  }))
+
+  // Removed debug logging effects
   const wrapperRef = useRef<HTMLDivElement>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const toolbarPointerRef = useRef(false)
@@ -257,6 +266,96 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     }
   }, [dirty, persistDraft])
 
+  const syncToolbarStyle = useCallback(() => {
+    const selection = editor.selection
+    if (!selection) return
+
+    const fontSizes = new Set<number>()
+    const colorTokens = new Set<string>()
+    const fontIds = new Set<string>()
+    const styleLabels = new Set<string>()
+
+    const addLeaf = (leaf: Partial<InlineLeaf>) => {
+      const fontSize = leaf.fontSize ?? component.props.fontSize
+      const fontId = leaf.fontId ?? component.props.fontId
+      const colorToken =
+        leaf.colorToken ?? leaf.colorValue ?? component.props.colorToken
+
+      fontSizes.add(fontSize)
+      colorTokens.add(colorToken)
+      fontIds.add(fontId)
+
+      const presetLabel =
+        STYLE_PRESETS.find(
+          (preset) =>
+            preset.fontSize === fontSize &&
+            preset.fontId === fontId &&
+            preset.colorToken === colorToken,
+        )?.label ?? 'Custom'
+
+      styleLabels.add(presetLabel)
+    }
+
+    const marks = Editor.marks(editor) as Partial<InlineLeaf> | null
+    const leaf =
+      marks && Object.keys(marks).length > 0
+        ? marks
+        : (() => {
+            try {
+              const [node] = Editor.leaf(editor, selection.anchor.path)
+              return node as InlineLeaf
+            } catch {
+              return null
+            }
+          })()
+
+    if (Range.isExpanded(selection)) {
+      for (const [node] of Editor.nodes(editor, {
+        at: selection,
+        match: Text.isText,
+      })) {
+        addLeaf(node as InlineLeaf)
+      }
+    }
+
+    if (leaf) {
+      addLeaf(leaf)
+    }
+
+    if (fontSizes.size === 0) fontSizes.add(component.props.fontSize)
+    if (colorTokens.size === 0) colorTokens.add(component.props.colorToken)
+    if (fontIds.size === 0) fontIds.add(component.props.fontId)
+    if (styleLabels.size === 0) {
+      const defaultLabel =
+        STYLE_PRESETS.find(
+          (preset) =>
+            preset.fontSize === component.props.fontSize &&
+            preset.fontId === component.props.fontId &&
+            preset.colorToken === component.props.colorToken,
+        )?.label ?? 'Style'
+      styleLabels.add(defaultLabel)
+    }
+
+    const nextFontSizes = Array.from(fontSizes)
+    const nextColorTokens = Array.from(colorTokens)
+    const nextFontIds = Array.from(fontIds)
+    const nextStyleLabels = Array.from(styleLabels)
+
+    setSelectionSummary({
+      fontSizes: nextFontSizes,
+      colorTokens: nextColorTokens,
+      fontIds: nextFontIds,
+      styleLabels: nextStyleLabels,
+    })
+
+    // no-op: toolbar sync summary
+  }, [
+    component.props.colorToken,
+    component.props.fontId,
+    component.props.fontSize,
+    editor,
+  ])
+
   const handleSlateChange = useCallback((nextValue: Descendant[]) => {
     const nextText = toPlainText(nextValue)
     setDraft(nextValue)
@@ -264,14 +363,20 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     setDisplayNodes(nextValue)
     setDisplayText(nextText)
     setStyleState((prev) => ({ ...prev }))
-  }, [])
+    syncToolbarStyle()
+  }, [editor, syncToolbarStyle])
 
   const applyInlineStyle = useCallback(
     (
       style: InlineLeafStyle,
       options?: { clear?: (keyof InlineLeafStyle)[] },
     ) => {
-      if (!editor.selection || !Range.isExpanded(editor.selection)) return false
+      if (!editor.selection) {
+    return false
+  }
+  if (!Range.isExpanded(editor.selection)) {
+    return false
+  }
       options?.clear?.forEach((key) => {
         Transforms.unsetNodes(editor, key as string, {
           match: Text.isText,
@@ -373,6 +478,40 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
     styleState.colorToken ||
     '#0f172a'
 
+  const selectedFontSize =
+    selectionSummary.fontSizes.length === 1
+      ? selectionSummary.fontSizes[0]
+      : styleState.fontSize
+
+  const styleButtonLabel =
+    selectionSummary.styleLabels.length > 1
+      ? 'Multiple'
+      : selectionSummary.styleLabels[0] ??
+        STYLE_PRESETS.find(
+          (preset) =>
+            preset.fontSize === styleState.fontSize &&
+            preset.fontId === styleState.fontId &&
+            preset.colorToken === styleState.colorToken,
+        )?.label ??
+        'Style'
+
+  const sizeButtonLabel =
+    selectionSummary.fontSizes.length > 1
+      ? 'Multiple'
+      : `${selectedFontSize}px`
+
+  const colorButtonLabel =
+    selectionSummary.colorTokens.length > 1
+      ? 'Multiple'
+      : selectionSummary.colorTokens[0] ?? ''
+
+  const colorSwatch =
+    resolveThemeColor(
+      theme,
+      selectionSummary.colorTokens[0] ?? styleState.colorToken,
+      selectionSummary.colorTokens[0] ?? styleState.colorToken,
+    ) || currentColor
+
   const updateToolbarPosition = useCallback(() => {
     if (!wrapperRef.current) return
     const rect = wrapperRef.current.getBoundingClientRect()
@@ -395,6 +534,12 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
       window.removeEventListener('scroll', updateToolbarPosition, true)
     }
   }, [isFocused, updateToolbarPosition])
+
+  useEffect(() => {
+    if (isFocused) {
+      syncToolbarStyle()
+    }
+  }, [isFocused, syncToolbarStyle])
 
   useEffect(() => {
     if (isFocused) updateToolbarPosition()
@@ -437,14 +582,9 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
           >
             <div className="pointer-events-auto flex gap-2">
               <ToolbarButton
-                label={
-                  STYLE_PRESETS.find(
-                    (preset) =>
-                      preset.fontSize === styleState.fontSize &&
-                      preset.fontId === styleState.fontId,
-                  )?.label ?? 'Style'
-                }
+                label={styleButtonLabel}
                 active={activeMenu === 'style'}
+                labelClassName="max-w-[120px]"
                 onToggle={() =>
                   setActiveMenu(activeMenu === 'style' ? null : 'style')
                 }
@@ -468,8 +608,9 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
                 }
               />
               <ToolbarButton
-                label={`${styleState.fontSize}px`}
+                label={sizeButtonLabel}
                 active={activeMenu === 'size'}
+                labelClassName="max-w-[80px]"
                 onToggle={() =>
                   setActiveMenu(activeMenu === 'size' ? null : 'size')
                 }
@@ -493,9 +634,10 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
                 }
               />
               <ToolbarButton
-                label=""
-                swatch={currentColor}
+                label={colorButtonLabel}
+                swatch={colorSwatch}
                 active={activeMenu === 'color'}
+                labelClassName="max-w-[120px]"
                 onToggle={() =>
                   setActiveMenu(activeMenu === 'color' ? null : 'color')
                 }
@@ -603,7 +745,9 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
                 letterSpacing: component.props.letterSpacing ?? 0,
                 lineHeight: component.props.lineHeight ?? 1.05,
               }}
-              onFocus={() => setIsFocused(true)}
+              onFocus={() => {
+                setIsFocused(true)
+              }}
               onBlur={() => {
                 if (toolbarPointerRef.current) {
                   toolbarPointerRef.current = false
@@ -638,12 +782,14 @@ function ToolbarButton({
   active,
   onToggle,
   menu,
+  labelClassName,
 }: {
   label: string
   swatch?: string
   active: boolean
   onToggle: () => void
   menu: React.ReactNode
+  labelClassName?: string
 }) {
   return (
     <div className="relative">
@@ -664,7 +810,9 @@ function ToolbarButton({
             style={{ backgroundColor: swatch }}
           />
         )}
-        {label || 'Color'}
+        <span className={`max-w-[140px] truncate ${labelClassName ?? ''}`}>
+          {label || 'Color'}
+        </span>
       </button>
       {active && (
         <div className="absolute left-1/2 top-full z-[2100] w-40 -translate-x-1/2 rounded-2xl border border-slate-100 bg-white p-2 text-xs shadow-xl">
