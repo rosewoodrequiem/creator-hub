@@ -8,6 +8,7 @@ import type {
 } from '../../store/schedule-maker-db/SheduleMakerDB.types'
 import { DAY_LABELS } from '../../utils/date'
 import { AssetPicker } from '../components/AssetPicker'
+import { resolveThemeColor } from '../theme/themeUtils'
 
 type Props = {
   component: ScheduleComponentWithProps<'day-card'>
@@ -48,6 +49,30 @@ export function DayCardComponentEditor({ component, theme, snapshot }: Props) {
   const accentColor = theme.colors.find(
     (color) => color.id === component.props.accentColorToken,
   )?.value
+
+  const titleFontSize = component.props.titleFontSize ?? 40
+  const dayLabelFontSize = component.props.dayLabelFontSize ?? 16
+
+  const applyDayLabelToAll = async () => {
+    const patch = {
+      dayLabelFontId: component.props.dayLabelFontId,
+      dayLabelFontSize: component.props.dayLabelFontSize,
+      dayLabelColorToken: component.props.dayLabelColorToken,
+    }
+    const targets = await db.components
+      .filter(
+        (item) =>
+          item.kind === 'day-card' && item.scheduleId === component.scheduleId,
+      )
+      .toArray()
+    await Promise.all(
+      targets
+        .filter((item) => item.id)
+        .map((item) =>
+          db.updateComponentProps(item.id!, 'day-card', patch),
+        ),
+    )
+  }
 
   return (
     <div className="space-y-4 text-sm text-slate-700">
@@ -111,6 +136,147 @@ export function DayCardComponentEditor({ component, theme, snapshot }: Props) {
         activeColor={accentColor}
         onSelect={selectColor('accentColorToken')}
       />
+
+      <div className="space-y-3 rounded-2xl border border-slate-100 bg-white/60 p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Title Style
+            </div>
+            <div className="text-sm font-semibold text-slate-800">
+              {titleFontSize}px ·{' '}
+              {
+                theme.fonts.find(
+                  (font) => font.id === (component.props.titleFontId ?? 'heading'),
+                )?.label ?? 'Heading'
+              }
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs font-semibold text-slate-600">
+            Font Size
+            <input
+              type="number"
+              min={8}
+              max={200}
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white/70 px-2 py-1"
+              value={titleFontSize}
+              onChange={(event) =>
+                handleProps({ titleFontSize: Number(event.target.value) || 0 })
+              }
+            />
+          </label>
+          <label className="text-xs font-semibold text-slate-600">
+            Font
+            <select
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white/70 px-2 py-1"
+              value={component.props.titleFontId ?? 'heading'}
+              onChange={(event) =>
+                handleProps({ titleFontId: event.target.value })
+              }
+            >
+              {theme.fonts.map((font) => (
+                <option key={font.id} value={font.id}>
+                  {font.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <ColorPalette
+          title="Title Color"
+          colors={theme.colors.map((color) => ({
+            label: color.label,
+            value: color.value,
+          }))}
+          activeColor={resolveThemeColor(
+            theme,
+            component.props.titleColorToken ?? 'text',
+            '#0f172a',
+          )}
+          onSelect={(value) => {
+            const token =
+              theme.colors.find((color) => color.value === value) ?? null
+            handleProps({
+              titleColorToken: token?.id ?? component.props.titleColorToken,
+            })
+          }}
+        />
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-slate-100 bg-white/60 p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Day Label Style
+            </div>
+            <div className="text-sm font-semibold text-slate-800">
+              {dayLabelFontSize}px ·{' '}
+              {
+                theme.fonts.find(
+                  (font) =>
+                    font.id === (component.props.dayLabelFontId ?? 'heading'),
+                )?.label ?? 'Heading'
+              }
+            </div>
+          </div>
+          <Button size="sm" variant="ghost" onClick={applyDayLabelToAll}>
+            Apply to all
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs font-semibold text-slate-600">
+            Font Size
+            <input
+              type="number"
+              min={8}
+              max={72}
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white/70 px-2 py-1"
+              value={dayLabelFontSize}
+              onChange={(event) =>
+                handleProps({ dayLabelFontSize: Number(event.target.value) || 0 })
+              }
+            />
+          </label>
+          <label className="text-xs font-semibold text-slate-600">
+            Font
+            <select
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white/70 px-2 py-1"
+              value={component.props.dayLabelFontId ?? 'heading'}
+              onChange={(event) =>
+                handleProps({ dayLabelFontId: event.target.value })
+              }
+            >
+              {theme.fonts.map((font) => (
+                <option key={font.id} value={font.id}>
+                  {font.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <ColorPalette
+          title="Day Label Color"
+          colors={theme.colors.map((color) => ({
+            label: color.label,
+            value: color.value,
+          }))}
+          activeColor={resolveThemeColor(
+            theme,
+            component.props.dayLabelColorToken ?? 'secondary',
+            '#4b5563',
+          )}
+          onSelect={(value) => {
+            const token =
+              theme.colors.find((color) => color.value === value) ?? null
+            handleProps({
+              dayLabelColorToken:
+                token?.id ?? component.props.dayLabelColorToken,
+            })
+          }}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <Button

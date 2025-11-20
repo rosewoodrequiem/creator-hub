@@ -5,6 +5,7 @@ import { DB } from '../../dexie'
 import { Day } from '../../types/Day'
 import type { TemplateId } from '../../types/Template'
 import { Week } from '../../types/Week'
+import type { Descendant } from 'slate'
 import { emptyWeek } from './ScheduleMakerDB.helpers'
 import {
   ComponentKind,
@@ -24,6 +25,7 @@ import {
   getDefaultComponentProps,
 } from './SheduleMakerDB.types'
 import { seed } from './seed'
+import { DAY_LABELS } from '../../utils/date'
 
 const DB_NAME = 'schedule-maker'
 const GLOBAL_ROW_ID = 1
@@ -63,6 +65,16 @@ const DAYS_ORDER = [
 const SNAPSHOT_DEBOUNCE_MS = 800
 const SNAPSHOT_HISTORY_LIMIT = 50
 
+const ensureContent = (value: Descendant[] | undefined, fallbackText: string) =>
+  value && value.length > 0
+    ? value
+    : [
+        {
+          type: 'paragraph',
+          children: [{ text: fallbackText }],
+        } as Descendant,
+      ]
+
 export class ScheduleMakerDB extends Dexie implements DB {
   images!: DB['images']
   schedules!: DB['schedules']
@@ -83,7 +95,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
   constructor() {
     super(DB_NAME, { addons: [relationships] })
 
-    const baseStores = {
+    const baseStoresV1 = {
       images: '++id, name',
       themes: '++id, slug, name',
       schedules: '++id, name, themeId, updatedAt',
@@ -92,10 +104,18 @@ export class ScheduleMakerDB extends Dexie implements DB {
       componentProps: '++id, componentId, kind',
       global: '++id, currentScheduleId',
     }
+    const baseStoresV3 = {
+      ...baseStoresV1,
+      scheduleDays: '++id, [scheduleId+day], scheduleId, day',
+    }
 
-    this.version(1).stores(baseStores)
+    this.version(1).stores(baseStoresV1)
     this.version(2).stores({
-      ...baseStores,
+      ...baseStoresV1,
+      snapshots: '++id, scheduleId, createdAt',
+    })
+    this.version(3).stores({
+      ...baseStoresV3,
       snapshots: '++id, scheduleId, createdAt',
     })
 
@@ -446,6 +466,15 @@ export class ScheduleMakerDB extends Dexie implements DB {
         }
 
         const props = { ...(stored as ComponentPropsMap['day-card']) }
+        props.titleContent = ensureContent(
+          props.titleContent,
+          (week[props.day]?.gameName || 'Untitled Stream') ??
+            'Untitled Stream',
+        )
+        props.dayLabelContent = ensureContent(
+          props.dayLabelContent,
+          DAY_LABELS[props.day] ?? 'DAY',
+        )
         if (typeof props.backgroundImageId === 'number') {
           props.backgroundImageUrl = assetMap.get(props.backgroundImageId)?.data
         } else {

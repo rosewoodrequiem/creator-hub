@@ -16,11 +16,9 @@ import {
   weekDates,
 } from '../../utils/date'
 import { InlineTextBlock } from '../components/inline-text-block/InlineTextBlock'
-import {
-  resolveThemeColor,
-  resolveThemeFont,
-  resolveThemeRadius,
-} from '../theme/themeUtils'
+import { resolveThemeColor, resolveThemeRadius } from '../theme/themeUtils'
+import { InlineDayCardText } from '../components/inline-text-block/InlineDayCardText'
+import { db } from '../../store/schedule-maker-db/ScheduleMakerDB'
 
 const DAYS_SEQUENCE: Day[] = [
   Day.MON,
@@ -144,7 +142,6 @@ const dayCardRenderer: Renderer = ({
     props.borderRadiusToken ?? 'lg',
     theme.radii.lg,
   )
-  const textColor = resolveThemeColor(theme, 'text', '#0f172a')
   const zoneColor = resolveThemeColor(theme, 'secondary', '#64748b')
 
   const backgroundImage =
@@ -165,25 +162,78 @@ const dayCardRenderer: Renderer = ({
       }}
     >
       <div className="flex h-full flex-1 flex-col justify-center gap-4 px-10">
-        <div
-          className="text-sm uppercase tracking-[0.4em]"
-          style={{ color: zoneColor }}
-        >
-          {DAY_LABELS[day]}
-        </div>
-        <div
-          className="text-5xl font-extrabold"
-          style={{
-            color: textColor,
-            fontFamily: resolveThemeFont(
-              theme,
-              'heading',
-              'Poppins, sans-serif',
-            ),
+        <InlineDayCardText
+          kind="day-label"
+          theme={theme}
+          baseStyle={{
+            fontId: props.dayLabelFontId ?? 'heading',
+            fontSize: props.dayLabelFontSize ?? 14,
+            colorToken: props.dayLabelColorToken ?? 'secondary',
+            textTransform: 'uppercase',
+            letterSpacing: '0.4em',
           }}
-        >
-          {dayData?.gameName?.trim() || 'Untitled Stream'}
-        </div>
+          value={props.dayLabelContent}
+          text={DAY_LABELS[day]}
+          lockText
+          actions={[
+            {
+              label: 'Apply to all',
+              onClick: async (style) => {
+                const targets = await db.components
+                  .filter(
+                    (item) =>
+                      item.kind === 'day-card' &&
+                      item.scheduleId === component.scheduleId,
+                  )
+                  .toArray()
+                await Promise.all(
+                  targets
+                    .filter((item) => item.id)
+                    .map((item) =>
+                      db.updateComponentProps(item.id!, 'day-card', {
+                        dayLabelFontId: style.fontId,
+                        dayLabelFontSize: style.fontSize,
+                        dayLabelColorToken: style.colorToken,
+                      }),
+                    ),
+                )
+                db.requestSnapshotCapture('day-card-inline')
+              },
+            },
+          ]}
+          onChange={async (payload) => {
+            if (!component.id) return
+            await db.updateComponentProps(component.id, 'day-card', {
+              dayLabelContent: payload.content,
+              dayLabelFontId: payload.style.fontId,
+              dayLabelFontSize: payload.style.fontSize,
+              dayLabelColorToken: payload.style.colorToken,
+            })
+            db.requestSnapshotCapture('day-card-inline')
+          }}
+        />
+        <InlineDayCardText
+          kind="title"
+          theme={theme}
+          baseStyle={{
+            fontId: props.titleFontId ?? 'heading',
+            fontSize: props.titleFontSize ?? 40,
+            colorToken: props.titleColorToken ?? 'text',
+          }}
+          value={props.titleContent}
+          text={dayData?.gameName?.trim() || 'Untitled Stream'}
+          onChange={async (payload) => {
+            if (!component.id) return
+            await db.updateComponentProps(component.id, 'day-card', {
+              titleContent: payload.content,
+              titleFontId: payload.style.fontId,
+              titleFontSize: payload.style.fontSize,
+              titleColorToken: payload.style.colorToken,
+            })
+            await db.updateScheduleDay(day, { gameName: payload.text })
+            db.requestSnapshotCapture('day-card-inline')
+          }}
+        />
         {props.showDate && (
           <div className="text-2xl font-semibold" style={{ color: accent }}>
             {formattedDate}

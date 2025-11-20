@@ -110,6 +110,14 @@ export type DayCardComponentProps = {
   borderRadiusToken?: string
   showDate: boolean
   showTime: boolean
+  titleContent?: Descendant[]
+  titleFontId?: string
+  titleFontSize?: number
+  titleColorToken?: string
+  dayLabelContent?: Descendant[]
+  dayLabelFontId?: string
+  dayLabelFontSize?: number
+  dayLabelColorToken?: string
 }
 
 export type ComponentPropsMap = {
@@ -223,6 +231,14 @@ export function getDefaultComponentProps<K extends ComponentKind>(
       borderRadiusToken: 'lg',
       showDate: true,
       showTime: true,
+      titleContent: makeRichText('Untitled Stream'),
+      titleFontId: 'heading',
+      titleFontSize: 40,
+      titleColorToken: 'text',
+      dayLabelContent: makeRichText('MONDAY'),
+      dayLabelFontId: 'heading',
+      dayLabelFontSize: 16,
+      dayLabelColorToken: 'secondary',
     },
   }
 
