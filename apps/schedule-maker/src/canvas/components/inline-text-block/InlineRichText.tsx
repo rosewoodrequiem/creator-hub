@@ -32,6 +32,7 @@ import {
   toPlainText,
   withLockText,
 } from './richTextHelpers'
+import { debugLog, debugVerbose, isInlineDebugEnabled } from './inlineDebug'
 
 export type InlineRichTextStyle = {
   fontId: string
@@ -92,6 +93,8 @@ export function InlineRichText({
     colorTokens: [baseStyle.colorToken],
     fontIds: [baseStyle.fontId],
   }))
+  const prevSummaryRef = useRef<string>()
+  const prevSelectionRef = useRef<string>()
   const [activeMenu, setActiveMenu] = useState<'style' | 'size' | 'color' | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number } | null>(null)
@@ -131,7 +134,33 @@ export function InlineRichText({
   ])
 
   const currentColor =
-    resolveThemeColor(theme, styleState.colorToken, '') || styleState.colorToken
+    selectionSummary.colorTokens.length === 1
+      ? resolveThemeColor(theme, selectionSummary.colorTokens[0], '') ||
+        selectionSummary.colorTokens[0]
+      : resolveThemeColor(theme, styleState.colorToken, '') || styleState.colorToken
+
+  const toolbarFontSize =
+    selectionSummary.fontSizes.length === 1
+      ? selectionSummary.fontSizes[0]
+      : styleState.fontSize
+
+  // Log summary changes to trace color/multiple flicker.
+  useEffect(() => {
+    const summaryKey = JSON.stringify(selectionSummary)
+    const selectionKey = JSON.stringify(editor.selection)
+    if (
+      summaryKey !== prevSummaryRef.current ||
+      selectionKey !== prevSelectionRef.current
+    ) {
+      debugVerbose('summary', 'selection summary update', {
+        summary: selectionSummary,
+        selection: editor.selection,
+        styleState,
+      })
+      prevSummaryRef.current = summaryKey
+      prevSelectionRef.current = selectionKey
+    }
+  }, [editor.selection, selectionSummary, styleState])
 
   const updateToolbarPosition = useCallback(() => {
     if (!wrapperRef.current) return
@@ -142,11 +171,36 @@ export function InlineRichText({
     })
   }, [])
 
+  useEffect(() => {
+    if (!isFocused) {
+      setToolbarPos(null)
+      return
+    }
+    updateToolbarPosition()
+    window.addEventListener('resize', updateToolbarPosition)
+    window.addEventListener('scroll', updateToolbarPosition, true)
+    debugVerbose('focus', 'focus gained', {
+      selection: editor.selection,
+      summary: selectionSummary,
+      styleState,
+    })
+    return () => {
+      window.removeEventListener('resize', updateToolbarPosition)
+      window.removeEventListener('scroll', updateToolbarPosition, true)
+    }
+  }, [editor.selection, isFocused, selectionSummary, styleState, updateToolbarPosition])
+
   const handleSlateChange = useCallback(
     (nextValue: Descendant[]) => {
       setDraft(nextValue)
       syncToolbarStyle(editor, setStyleState, baseStyle, setSelectionSummary)
       const nextText = toPlainText(nextValue)
+      debugVerbose('slateChange', 'change', {
+        text: nextText,
+        selection: editor.selection,
+        summary: selectionSummary,
+        value: nextValue,
+      })
       void onChange({
         content: nextValue,
         text: nextText,
@@ -176,7 +230,13 @@ export function InlineRichText({
       style: InlineLeafStyle,
       options?: { clear?: (keyof InlineLeafStyle)[] },
     ) => {
-      if (!editor.selection || !Range.isExpanded(editor.selection)) return false
+      if (!editor.selection || !Range.isExpanded(editor.selection)) {
+        debugLog('applyInlineStyle', 'skipped (no selection)', {
+          selection: editor.selection,
+          style,
+        })
+        return false
+      }
       options?.clear?.forEach((key) => {
         Transforms.unsetNodes(editor, key as string, {
           match: Text.isText,
@@ -188,9 +248,14 @@ export function InlineRichText({
         split: true,
       })
       syncToolbarStyle(editor, setStyleState, baseStyle, setSelectionSummary)
+      debugVerbose('applyInlineStyle', 'applied', {
+        applied: style,
+        selection: editor.selection,
+        summary: selectionSummary,
+      })
       return true
     },
-    [baseStyle, editor],
+    [baseStyle, editor, selectionSummary],
   )
 
   const applyThemeColor = (tokenId: string) => {
@@ -199,6 +264,10 @@ export function InlineRichText({
       return
     }
     setStyleState((prev) => ({ ...prev, colorToken: tokenId }))
+    debugLog('applyThemeColor', 'no selection; updating base', {
+      tokenId,
+      selection: editor.selection,
+    })
     setActiveMenu(null)
   }
 
@@ -208,6 +277,10 @@ export function InlineRichText({
       return
     }
     setStyleState((prev) => ({ ...prev, colorToken: color }))
+    debugLog('applyCustomColor', 'no selection; updating base', {
+      color,
+      selection: editor.selection,
+    })
     setActiveMenu(null)
   }
 
@@ -233,7 +306,7 @@ export function InlineRichText({
                 label={
                   selectionSummary.fontSizes.length > 1
                     ? 'Multiple'
-                    : `${styleState.fontSize}px`
+                    : `${toolbarFontSize}px`
                 }
                 active={activeMenu === 'size'}
                 onToggle={() =>
@@ -354,10 +427,18 @@ export function InlineRichText({
           onFocus={() => {
             setIsFocused(true)
             updateToolbarPosition()
+            debugVerbose('Editable', 'onFocus', {
+              selection: editor.selection,
+              summary: selectionSummary,
+            })
           }}
           onBlur={() => {
             setIsFocused(false)
             setActiveMenu(null)
+            debugVerbose('Editable', 'onBlur', {
+              selection: editor.selection,
+              summary: selectionSummary,
+            })
           }}
         />
         <input

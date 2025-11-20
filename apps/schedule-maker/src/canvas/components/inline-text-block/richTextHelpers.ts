@@ -37,15 +37,15 @@ export function cloneDescendants(value: Descendant[]): Descendant[] {
 
 export function syncToolbarStyle<T extends InlineStyleBase>(
   editor: Editor,
-  setStyleState: Dispatch<SetStateAction<T>>,
+  setStyleState: Dispatch<SetStateAction<T>> | undefined,
   base: T,
   setSummary?: Dispatch<SetStateAction<InlineSelectionSummary>>,
 ) {
   const selection = editor.selection
   if (!selection) return
-  const fontSizes = new Set<number>()
-  const fontIds = new Set<string>()
-  const colorTokens = new Set<string>()
+  const fontSizes = new Set<number>([base.fontSize])
+  const fontIds = new Set<string>([base.fontId])
+  const colorTokens = new Set<string>([base.colorToken])
 
   const addLeaf = (leaf: Partial<InlineLeaf>) => {
     const size = leaf.fontSize ?? base.fontSize
@@ -67,17 +67,19 @@ export function syncToolbarStyle<T extends InlineStyleBase>(
     addLeaf(node as InlineLeaf)
   }
 
-  setStyleState((prev) => ({
-    ...prev,
-    fontSize:
-      fontSizes.size === 1 ? Array.from(fontSizes)[0] : prev.fontSize ?? base.fontSize,
-    fontId:
-      fontIds.size === 1 ? Array.from(fontIds)[0] : prev.fontId ?? base.fontId,
-    colorToken:
-      colorTokens.size === 1
-        ? Array.from(colorTokens)[0]
-        : prev.colorToken ?? base.colorToken,
-  }))
+  if (setStyleState) {
+    setStyleState((prev) => ({
+      ...prev,
+      fontSize:
+        fontSizes.size === 1 ? Array.from(fontSizes)[0] : prev.fontSize ?? base.fontSize,
+      fontId:
+        fontIds.size === 1 ? Array.from(fontIds)[0] : prev.fontId ?? base.fontId,
+      colorToken:
+        colorTokens.size === 1
+          ? Array.from(colorTokens)[0]
+          : prev.colorToken ?? base.colorToken,
+    }))
+  }
 
   if (setSummary) {
     setSummary({
