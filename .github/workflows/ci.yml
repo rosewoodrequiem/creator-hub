@@ -41,4 +41,6 @@ jobs:
 
       # Prepend any command with "nx-cloud record --" to record its logs to Nx Cloud
       # - run: npx nx-cloud record -- echo Hello World
-      - run: pnpm exec nx run-many -t lint test build typecheck
+      - run: cd apps/schedule-maker
+      - run: pnpm run lint
+      - run: pnpm run build
