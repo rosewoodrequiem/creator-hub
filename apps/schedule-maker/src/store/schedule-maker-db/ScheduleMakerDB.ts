@@ -318,7 +318,7 @@ export class ScheduleMakerDB extends Dexie implements DB {
 
   async updateComponentProps<K extends ComponentKind>(
     componentId: number,
-    kind: K,
+    _kind: K,
     patch: Partial<ComponentPropsMap[K]>,
   ) {
     const component = await this.components.get(componentId)
@@ -422,34 +422,40 @@ export class ScheduleMakerDB extends Dexie implements DB {
         const stored =
           (component.id && propsMap.get(component.id)?.data) ??
           getDefaultComponentProps(component.kind)
-        let props: ComponentPropsMap[typeof component.kind]
-
         if (component.kind === 'text') {
-          props = { ...(stored as ComponentPropsMap['text']) }
-        } else if (component.kind === 'image') {
-          const typed = { ...(stored as ComponentPropsMap['image']) }
-          if (typeof typed.imageId === 'number') {
-            typed.imageUrl = assetMap.get(typed.imageId)?.data
-          } else {
-            typed.imageUrl = undefined
-          }
-          props = typed
-        } else {
-          const typed = { ...(stored as ComponentPropsMap['day-card']) }
-          if (typeof typed.backgroundImageId === 'number') {
-            typed.backgroundImageUrl = assetMap.get(
-              typed.backgroundImageId,
-            )?.data
-          } else {
-            typed.backgroundImageUrl = undefined
-          }
-          props = typed
+          const props = { ...(stored as ComponentPropsMap['text']) }
+          return {
+            ...component,
+            kind: 'text',
+            props,
+          } satisfies ScheduleComponentWithProps<'text'>
         }
 
+        if (component.kind === 'image') {
+          const props = { ...(stored as ComponentPropsMap['image']) }
+          if (typeof props.imageId === 'number') {
+            props.imageUrl = assetMap.get(props.imageId)?.data
+          } else {
+            props.imageUrl = undefined
+          }
+          return {
+            ...component,
+            kind: 'image',
+            props,
+          } satisfies ScheduleComponentWithProps<'image'>
+        }
+
+        const props = { ...(stored as ComponentPropsMap['day-card']) }
+        if (typeof props.backgroundImageId === 'number') {
+          props.backgroundImageUrl = assetMap.get(props.backgroundImageId)?.data
+        } else {
+          props.backgroundImageUrl = undefined
+        }
         return {
           ...component,
+          kind: 'day-card',
           props,
-        }
+        } satisfies ScheduleComponentWithProps<'day-card'>
       })
 
     componentsWithProps.sort((a, b) => a.zIndex - b.zIndex)

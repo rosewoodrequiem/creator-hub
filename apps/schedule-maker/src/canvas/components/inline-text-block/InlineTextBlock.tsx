@@ -558,6 +558,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
       return () => cancelAnimationFrame(frame)
     }
     wasSelectedRef.current = isSelected
+    return undefined
   }, [isSelected, editor])
 
   const toolbarPortal: ReactNode =
