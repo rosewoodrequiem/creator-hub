@@ -7,6 +7,8 @@ const uiKitPath = fileURLToPath(
 )
 
 export default defineConfig({
+  // Use a relative base so the app works when hosted from a subfolder (e.g. GitHub Pages)
+  base: './',
   plugins: [react()],
   resolve: {
     dedupe: ['react', 'react-dom'],

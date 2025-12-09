@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "sm:start": "nx serve schedule-maker"
+    "sm:start": "nx serve schedule-maker",
+    "build:gh-pages": "node tools/gh-pages/build.mjs",
+    "deploy": "pnpm build:gh-pages && gh-pages -d dist",
+    "preview:gh-pages": "pnpm run build:gh-pages && pnpm dlx serve dist"
   },
   "private": true,
   "dependencies": {
@@ -17,6 +20,7 @@
     "lodash": "^4.17.21",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "styled-components": "^6.1.15",
     "slate": "^0.118.1",
     "slate-history": "^0.113.1",
     "slate-react": "^0.118.1",
@@ -47,6 +51,7 @@
     "@types/node": "20.19.9",
     "@types/react": "19.0.0",
     "@types/react-dom": "19.0.0",
+    "@types/styled-components": "^5.1.34",
     "@vitejs/plugin-react": "^4.2.0",
     "@vitest/coverage-v8": "^3.0.5",
     "@vitest/ui": "^3.0.0",
@@ -60,6 +65,7 @@
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "gh-pages": "^6.3.0",
     "jiti": "2.4.2",
     "jsdom": "~22.1.0",
     "nx": "21.5.3",
