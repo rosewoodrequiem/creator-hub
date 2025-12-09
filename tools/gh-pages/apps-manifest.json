@@ -1,12 +1,15 @@
-{
-  "schedule-maker": {
+[
+  {
+    "name": "schedule-maker",
     "title": "Schedule Maker",
     "description": "Create and export polished schedules in minutes.",
     "status": "coming-soon"
   },
-  "bingo-maker": {
+  {
+    "name": "bingo-maker",
     "title": "Game Awards Bingo",
     "description": "Build and track your predictions live.",
-    "status": "available"
+    "status": "available",
+    "href": "http://localhost:4173/"
   }
-}
+]
