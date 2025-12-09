@@ -1,5 +1,12 @@
 [
   {
+    "name": "bingo-maker",
+    "title": "Game Awards Bingo",
+    "description": "Build and track your predictions live.",
+    "status": "available",
+    "href": "./apps/bingo-maker/"
+  },
+  {
     "name": "schedule-maker",
     "title": "Schedule Maker",
     "description": "Create and export polished schedules in minutes.",
