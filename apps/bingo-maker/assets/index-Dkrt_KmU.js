@@ -87,8 +87,8 @@ Error generating stack: `+a.message+`
 `,j0=Le.div`
   display: grid;
   gap: 6px;
-  grid-template-columns: repeat(5, 150px);
-  grid-auto-rows: 150px;
+  grid-template-columns: repeat(5, 130px);
+  grid-auto-rows: 130px;
   width: fit-content;
   max-width: 100%;
   align-items: stretch;
@@ -107,7 +107,7 @@ Error generating stack: `+a.message+`
     0 20px 50px rgba(0, 0, 0, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   height: 100%;
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 200px);
 `,U0=Le.div`
   flex: 1;
   width: 100%;
@@ -198,7 +198,7 @@ Error generating stack: `+a.message+`
   gap: 10px;
 `,Y0=Le.div`
   display: grid;
-  grid-template-columns: repeat(5, 150px);
+  grid-template-columns: repeat(5, 130px);
   gap: 6px;
   width: fit-content;
   max-width: 100%;
