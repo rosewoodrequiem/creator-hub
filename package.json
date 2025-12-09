@@ -6,7 +6,8 @@
     "sm:start": "nx serve schedule-maker",
     "build:gh-pages": "node tools/gh-pages/build.mjs",
     "deploy": "pnpm build:gh-pages && gh-pages -d dist",
-    "preview:gh-pages": "pnpm run build:gh-pages && pnpm dlx serve dist"
+    "preview:gh-pages": "pnpm run build:gh-pages && pnpm dlx serve dist",
+    "dev:gh-pages": "node tools/gh-pages/dev-manifest.mjs && vite --config tools/gh-pages/vite.config.ts --host --port 4172"
   },
   "private": true,
   "dependencies": {
