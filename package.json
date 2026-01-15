@@ -4,6 +4,7 @@
   "license": "MIT",
   "scripts": {
     "sm:start": "nx serve schedule-maker",
+    "bm:start": "nx serve bingo-maker",
     "build:gh-pages": "node tools/gh-pages/build.mjs",
     "deploy": "pnpm build:gh-pages && gh-pages -d dist",
     "preview:gh-pages": "pnpm run build:gh-pages && pnpm dlx serve dist",
