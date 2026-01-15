@@ -366,15 +366,18 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
     editor,
   ])
 
-  const handleSlateChange = useCallback((nextValue: Descendant[]) => {
-    const nextText = toPlainText(nextValue)
-    setDraft(nextValue)
-    setDirty(true)
-    setDisplayNodes(nextValue)
-    setDisplayText(nextText)
-    setStyleState((prev) => ({ ...prev }))
-    syncToolbarStyle()
-  }, [editor, syncToolbarStyle])
+  const handleSlateChange = useCallback(
+    (nextValue: Descendant[]) => {
+      const nextText = toPlainText(nextValue)
+      setDraft(nextValue)
+      setDirty(true)
+      setDisplayNodes(nextValue)
+      setDisplayText(nextText)
+      setStyleState((prev) => ({ ...prev }))
+      syncToolbarStyle()
+    },
+    [syncToolbarStyle],
+  )
 
   const applyInlineStyle = useCallback(
     (

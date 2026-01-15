@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
+    "lint": "nx lint schedule-maker",
     "sm:start": "nx serve schedule-maker",
     "bm:start": "nx serve bingo-maker",
     "build:gh-pages": "node tools/gh-pages/build.mjs",

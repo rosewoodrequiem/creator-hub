@@ -29,8 +29,6 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
   canvasHeight,
   children,
 }) => {
-  if (component.visible === false) return null
-
   const { x, y, width, height, rotation, zIndex, locked, kind } = component
   const [isDragging, setIsDragging] = useState(false)
   const [draftPosition, setDraftPosition] = useState<{ x: number; y: number }>(
@@ -47,9 +45,29 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
 
   useEffect(() => {
     if (isDragging) return
-    setDraftPosition({ x, y })
-    lastPersistedRef.current = { x, y }
-  }, [x, y, isDragging])
+    const incoming = { x, y }
+    const lastPersisted = lastPersistedRef.current
+    const draft = draftPosition
+
+    // If props are stale relative to our last persisted position, keep showing the
+    // optimistic position until the DB-driven snapshot catches up.
+    if (
+      lastPersisted &&
+      (incoming.x !== lastPersisted.x || incoming.y !== lastPersisted.y)
+    ) {
+      return
+    }
+
+    if (draft.x === incoming.x && draft.y === incoming.y) {
+      lastPersistedRef.current = incoming
+      return
+    }
+
+    setDraftPosition(incoming)
+    lastPersistedRef.current = incoming
+  }, [x, y, isDragging, draftPosition])
+
+  if (component.visible === false) return null
 
   return (
     <div
@@ -78,6 +96,7 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           locked,
           setIsDragging,
           setDraftPosition,
+          currentPosition: draftPosition,
           pointerIdRef,
           dragOffsetRef,
           dragStartRef,
@@ -94,10 +113,12 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           locked,
           setIsDragging,
           setDraftPosition,
+          currentPosition: draftPosition,
           pointerIdRef,
           dragOffsetRef,
           dragStartRef,
           holdReadyRef,
+          holdTimerRef,
           rafPersistRef,
           lastPersistedRef,
           hasDraggedRef,
@@ -111,6 +132,7 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           locked,
           setIsDragging,
           setDraftPosition,
+          currentPosition: draftPosition,
           pointerIdRef,
           dragOffsetRef,
           dragStartRef,
@@ -159,6 +181,7 @@ function handlePointerDown(
     onSelect,
     setIsDragging,
     setDraftPosition,
+    currentPosition,
     pointerIdRef,
     dragOffsetRef,
     dragStartRef,
@@ -178,10 +201,10 @@ function handlePointerDown(
   pointerIdRef.current = event.pointerId
   dragStartRef.current = point
   dragOffsetRef.current = {
-    x: point.x - component.x,
-    y: point.y - component.y,
+    x: point.x - currentPosition.x,
+    y: point.y - currentPosition.y,
   }
-  setDraftPosition({ x: component.x, y: component.y })
+  setDraftPosition({ x: currentPosition.x, y: currentPosition.y })
   holdReadyRef.current = component.kind !== 'text'
 
   if (component.kind === 'text') {
@@ -209,10 +232,11 @@ function handlePointerMove(
     locked,
     setIsDragging,
     setDraftPosition,
+    currentPosition,
     pointerIdRef,
     dragOffsetRef,
-    dragStartRef,
     holdReadyRef,
+    dragStartRef,
     rafPersistRef,
     lastPersistedRef,
     hasDraggedRef,
@@ -224,9 +248,9 @@ function handlePointerMove(
   const point = toCanvasPoint(event, canvasWidth, canvasHeight)
   if (!point) return
 
+  const origin = dragStartRef.current ?? currentPosition
   const distance =
-    Math.abs(point.x - dragStartRef.current.x) +
-    Math.abs(point.y - dragStartRef.current.y)
+    Math.abs(point.x - origin.x) + Math.abs(point.y - origin.y)
 
   const readyToDrag = holdReadyRef.current || distance > 6
   if (!readyToDrag) return
@@ -276,7 +300,6 @@ function handlePointerUp(
     setDraftPosition,
     pointerIdRef,
     dragOffsetRef,
-    dragStartRef,
     holdReadyRef,
     holdTimerRef,
     rafPersistRef,
@@ -299,6 +322,9 @@ function handlePointerUp(
         canvasHeight,
       )
     : { x: component.x, y: component.y }
+
+  // Keep optimistic position while waiting for DB snapshot refresh.
+  lastPersistedRef.current = next
 
   const didDrag = hasDraggedRef.current
 
@@ -406,6 +432,7 @@ type PointerHandlerParams = {
   onSelect?: () => void
   setIsDragging: (value: boolean) => void
   setDraftPosition: (value: { x: number; y: number }) => void
+  currentPosition: { x: number; y: number }
   pointerIdRef: MutableRefObject<number | null>
   dragOffsetRef: MutableRefObject<{ x: number; y: number }>
   dragStartRef: MutableRefObject<{ x: number; y: number }>
