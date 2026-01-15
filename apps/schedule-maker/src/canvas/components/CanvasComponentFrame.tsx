@@ -31,7 +31,7 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
 }) => {
   const { x, y, width, height, rotation, zIndex, locked, kind } = component
   const frameRef = useRef<HTMLDivElement>(null)
-  const editing = isEditing(component, frameRef)
+  const getIsEditing = () => isComponentEditing(component, frameRef)
   const [isDragging, setIsDragging] = useState(false)
   const [draftPosition, setDraftPosition] = useState<{ x: number; y: number }>(
     () => ({ x, y }),
@@ -108,7 +108,7 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           holdTimerRef,
           hasDraggedRef,
           suppressClickRef,
-          isEditing: editing,
+          isEditing: getIsEditing,
         })
       }
       onPointerMove={(event) =>
@@ -129,7 +129,8 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           lastPersistedRef,
           hasDraggedRef,
           suppressClickRef,
-          isEditing: editing,
+          isDragging,
+          isEditing: getIsEditing,
         })
       }
       onPointerUp={(event) =>
@@ -150,7 +151,7 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           lastPersistedRef,
           hasDraggedRef,
           suppressClickRef,
-          isEditing: editing,
+          isEditing: getIsEditing,
         })
       }
       onPointerCancel={() =>
@@ -196,6 +197,7 @@ function handlePointerDown(
     canvasWidth,
     canvasHeight,
     locked,
+    isEditing,
     setIsDragging,
     setDraftPosition,
     currentPosition,
@@ -207,6 +209,7 @@ function handlePointerDown(
     hasDraggedRef,
   } = params
   if (locked) return
+  if (isEditing()) return
   if (component.visible === false || component.id == null) return
 
   event.stopPropagation()
@@ -239,7 +242,7 @@ function handlePointerMove(
     rafPersistRef: MutableRefObject<number | null>
     lastPersistedRef: MutableRefObject<{ x: number; y: number }>
     hasDraggedRef: MutableRefObject<boolean>
-    isEditing: boolean
+    isEditing: () => boolean
   },
 ) {
   const {
@@ -260,7 +263,7 @@ function handlePointerMove(
     isEditing,
   } = params
   if (locked) return
-  if (isEditing) return
+  if (isEditing()) return
   if (pointerIdRef.current !== event.pointerId) return
   if (component.id == null) return
 
@@ -286,15 +289,11 @@ function handlePointerMove(
     hasDraggedRef.current = true
   }
 
-  const next = clampPosition(
-    {
-      x: point.x - dragOffsetRef.current.x,
-      y: point.y - dragOffsetRef.current.y,
-    },
-    component,
-    canvasWidth,
-    canvasHeight,
-  )
+  const unclamped = {
+    x: point.x - dragOffsetRef.current.x,
+    y: point.y - dragOffsetRef.current.y,
+  }
+  const next = clampPosition(unclamped, component, canvasWidth, canvasHeight)
 
   setDraftPosition(next)
   schedulePersist(next, component.id, rafPersistRef, lastPersistedRef)
@@ -307,7 +306,7 @@ function handlePointerUp(
     rafPersistRef: MutableRefObject<number | null>
     lastPersistedRef: MutableRefObject<{ x: number; y: number }>
     hasDraggedRef: MutableRefObject<boolean>
-    isEditing: boolean
+    isEditing: () => boolean
   },
 ) {
   const {
@@ -328,7 +327,7 @@ function handlePointerUp(
     isEditing,
   } = params
   if (locked) return
-  if (isEditing) return
+  if (isEditing()) return
   if (pointerIdRef.current !== event.pointerId) return
   if (component.id == null) return
 
@@ -469,10 +468,11 @@ type PointerHandlerParams = {
   holdTimerRef: MutableRefObject<number | null>
   hasDraggedRef: MutableRefObject<boolean>
   suppressClickRef: MutableRefObject<boolean>
-  isEditing: boolean
+  isDragging?: boolean
+  isEditing: () => boolean
 }
 
-function isEditing(
+function isComponentEditing(
   component: ScheduleComponent,
   frameRef: MutableRefObject<HTMLDivElement | null>,
 ) {
