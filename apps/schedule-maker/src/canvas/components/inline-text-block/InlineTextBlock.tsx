@@ -1,6 +1,6 @@
 import {
-  JSX,
   type FC,
+  JSX,
   type ReactNode,
   useCallback,
   useEffect,
@@ -11,11 +11,11 @@ import {
 import { createPortal } from 'react-dom'
 import {
   type Descendant,
+  Editor,
   Range,
   Element as SlateElement,
   Text,
   Transforms,
-  Editor,
   createEditor,
 } from 'slate'
 import { withHistory } from 'slate-history'
@@ -24,8 +24,10 @@ import { Editable, ReactEditor, Slate, withReact } from 'slate-react'
 import { db } from '../../../store/schedule-maker-db/ScheduleMakerDB'
 import type {
   ScheduleComponentWithProps,
+  ScheduleSnapshot,
   Theme,
 } from '../../../store/schedule-maker-db/SheduleMakerDB.types'
+import { useScheduleSnapshot } from '../../hooks/useScheduleSnapshot'
 import { useCanvasStore } from '../../state/useCanvasStore'
 import { resolveThemeColor, resolveThemeFont } from '../../theme/themeUtils'
 import {
@@ -86,6 +88,7 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
   const selectComponent = useCanvasStore((state) => state.selectComponent)
 
   const isSelected = selectedComponentId === component.id
+  const snapshot = useScheduleSnapshot()
   const editor = useMemo(() => withHistory(withReact(createEditor())), [])
   const [draft, setDraft] = useState<Descendant[]>(() =>
     cloneDescendants(
@@ -95,7 +98,7 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
   const [editorKey, setEditorKey] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
   const [activeMenu, setActiveMenu] = useState<
-    'style' | 'size' | 'color' | null
+    'style' | 'size' | 'color' | 'layer' | null
   >(null)
   const [dirty, setDirty] = useState(false)
   const [styleDirty, setStyleDirty] = useState(false)
@@ -123,6 +126,9 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const toolbarPointerRef = useRef(false)
+  const toolbarContainerRef = useRef<HTMLDivElement | null>(null)
+  const clickAwayAllowRefs = useRef<Array<{ current: HTMLElement | null }>>([])
+  const lastAllowedPointerTargetRef = useRef<EventTarget | null>(null)
   const wasSelectedRef = useRef(isSelected)
   const autosaveTimeoutRef = useRef<number | null>(null)
   const lastSyncedTextRef = useRef(component.props.text ?? '')
@@ -385,11 +391,11 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
       options?: { clear?: (keyof InlineLeafStyle)[] },
     ) => {
       if (!editor.selection) {
-    return false
-  }
-  if (!Range.isExpanded(editor.selection)) {
-    return false
-  }
+        return false
+      }
+      if (!Range.isExpanded(editor.selection)) {
+        return false
+      }
       options?.clear?.forEach((key) => {
         Transforms.unsetNodes(editor, key as string, {
           match: Text.isText,
@@ -499,24 +505,22 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
   const styleButtonLabel =
     selectionSummary.styleLabels.length > 1
       ? 'Multiple'
-      : selectionSummary.styleLabels[0] ??
+      : (selectionSummary.styleLabels[0] ??
         STYLE_PRESETS.find(
           (preset) =>
             preset.fontSize === styleState.fontSize &&
             preset.fontId === styleState.fontId &&
             preset.colorToken === styleState.colorToken,
         )?.label ??
-        'Style'
+        'Style')
 
   const sizeButtonLabel =
-    selectionSummary.fontSizes.length > 1
-      ? 'Multiple'
-      : `${selectedFontSize}px`
+    selectionSummary.fontSizes.length > 1 ? 'Multiple' : `${selectedFontSize}px`
 
   const colorButtonLabel =
     selectionSummary.colorTokens.length > 1
       ? 'Multiple'
-      : selectionSummary.colorTokens[0] ?? ''
+      : (selectionSummary.colorTokens[0] ?? '')
 
   const colorSwatch =
     resolveThemeColor(
@@ -534,6 +538,29 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
   useEffect(() => {
     if (isFocused) updateToolbarPosition()
   }, [editorKey, isFocused, updateToolbarPosition])
+
+  useEffect(() => {
+    clickAwayAllowRefs.current = [toolbarContainerRef]
+  }, [])
+
+  useEffect(() => {
+    if (!isFocused) return
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      const isAllowed = clickAwayAllowRefs.current.some((ref) =>
+        ref.current?.contains(target),
+      )
+      if (isAllowed) {
+        lastAllowedPointerTargetRef.current = event.target
+        toolbarPointerRef.current = true
+      } else {
+        lastAllowedPointerTargetRef.current = null
+      }
+    }
+    window.addEventListener('pointerdown', handlePointerDown, true)
+    return () =>
+      window.removeEventListener('pointerdown', handlePointerDown, true)
+  }, [isFocused])
 
   useEffect(() => {
     if (isSelected && !wasSelectedRef.current) {
@@ -562,16 +589,28 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
               transform: 'translate(-50%, -50%)',
             }}
             onPointerDown={(event) => {
-              event.preventDefault()
-              toolbarPointerRef.current = true
+              // Stop bubbling to parent React tree (prevents deselect)
+              event.stopPropagation()
             }}
-            onPointerUp={(event) => {
-              event.preventDefault()
-              toolbarPointerRef.current = false
-              ReactEditor.focus(editor)
-            }}
+            onClick={(event) => event.stopPropagation()}
           >
-            <div className="pointer-events-auto flex gap-2">
+            <div
+              className="pointer-events-auto flex gap-2"
+              ref={toolbarContainerRef}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                toolbarPointerRef.current = true
+                lastAllowedPointerTargetRef.current = event.target
+              }}
+              onPointerUp={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                toolbarPointerRef.current = false
+                lastAllowedPointerTargetRef.current = null
+                ReactEditor.focus(editor)
+              }}
+            >
               <ToolbarButton
                 label={styleButtonLabel}
                 active={activeMenu === 'style'}
@@ -668,6 +707,23 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
                   </ToolbarMenu>
                 }
               />
+              <ToolbarButton
+                label="Layer"
+                active={activeMenu === 'layer'}
+                labelClassName="max-w-[80px]"
+                onToggle={() =>
+                  setActiveMenu(activeMenu === 'layer' ? null : 'layer')
+                }
+                menu={
+                  <ToolbarMenu>
+                    <LayerMenuItems
+                      componentId={component.id}
+                      snapshot={snapshot}
+                      onDone={() => setActiveMenu(null)}
+                    />
+                  </ToolbarMenu>
+                }
+              />
             </div>
           </div>,
           document.body,
@@ -740,8 +796,16 @@ export const InlineTextBlock: FC<InlineTextBlockProps> = ({
                 setIsFocused(true)
               }}
               onBlur={() => {
-                if (toolbarPointerRef.current) {
+                const allowed =
+                  lastAllowedPointerTargetRef.current &&
+                  clickAwayAllowRefs.current.some((ref) =>
+                    ref.current?.contains(
+                      lastAllowedPointerTargetRef.current as Node,
+                    ),
+                  )
+                if (allowed || toolbarPointerRef.current) {
                   toolbarPointerRef.current = false
+                  lastAllowedPointerTargetRef.current = null
                   setTimeout(() => ReactEditor.focus(editor), 0)
                   return
                 }
@@ -792,6 +856,7 @@ function ToolbarButton({
         onMouseDown={(event) => event.preventDefault()}
         onClick={(event) => {
           event.preventDefault()
+          event.stopPropagation()
           onToggle()
         }}
       >
@@ -816,6 +881,88 @@ function ToolbarButton({
 
 function ToolbarMenu({ children }: { children: React.ReactNode }) {
   return <div className="space-y-1">{children}</div>
+}
+
+function LayerMenuItems({
+  componentId,
+  snapshot,
+  onDone,
+}: {
+  componentId?: number | null
+  snapshot?: ScheduleSnapshot | null
+  onDone: () => void
+}) {
+  const ordering = useMemo(() => {
+    if (!snapshot?.components?.length) return null
+    const ordered = [...snapshot.components].sort((a, b) => {
+      const zDiff = (a.zIndex ?? 0) - (b.zIndex ?? 0)
+      if (zDiff !== 0) return zDiff
+      return (a.id ?? 0) - (b.id ?? 0)
+    })
+    const index = ordered.findIndex((item) => item.id === componentId)
+    if (index < 0) return null
+    return {
+      isBack: index <= 0,
+      isFront: index >= ordered.length - 1,
+    }
+  }, [componentId, snapshot])
+
+  if (!componentId) return null
+
+  const move = (direction: Parameters<typeof db.reorderComponentZIndex>[1]) => {
+    void db.reorderComponentZIndex(componentId, direction)
+    onDone()
+  }
+
+  return (
+    <>
+      <LayerMenuButton
+        label="Forward"
+        disabled={ordering?.isFront}
+        onClick={() => move('forward')}
+      />
+      <LayerMenuButton
+        label="Front"
+        disabled={ordering?.isFront}
+        onClick={() => move('front')}
+      />
+      <LayerMenuButton
+        label="Backward"
+        disabled={ordering?.isBack}
+        onClick={() => move('backward')}
+      />
+      <LayerMenuButton
+        label="Back"
+        disabled={ordering?.isBack}
+        onClick={() => move('back')}
+      />
+    </>
+  )
+}
+
+function LayerMenuButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className="w-full rounded-lg px-4 py-1.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+      disabled={disabled}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.preventDefault()
+        onClick()
+      }}
+    >
+      {label}
+    </button>
+  )
 }
 
 function RichTextPreview({
