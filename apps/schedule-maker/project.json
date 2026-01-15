@@ -10,7 +10,12 @@
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["apps/schedule-maker/**/*.{ts,tsx,js,jsx}"]
+        "lintFilePatterns": [
+          "apps/schedule-maker/src/**/*.{ts,tsx,js,jsx}",
+          "apps/schedule-maker/*.ts",
+          "apps/schedule-maker/*.tsx",
+          "apps/schedule-maker/**/*.config.{js,ts,mjs,cjs}"
+        ]
       }
     }
   }

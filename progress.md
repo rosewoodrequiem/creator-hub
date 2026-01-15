@@ -8,7 +8,7 @@
 - [ ] Add initial tasks here
 
 ## Log
-- Added a root lint script and explicit Nx lint target for schedule-maker so linting runs via `pnpm lint`.
+- Added a root lint script and explicit Nx lint target for schedule-maker so linting runs via `pnpm lint` (Nx CLI currently timing out locally).
 - Resolved TypeScript/lint errors from drag handling by aligning pointer handler params and recalculating distances without unused refs; `pnpm tsc --noEmit` and `pnpm lint` now pass.
 - Fixed drag jitter by using the current optimistic position for offsets and cleaned lint issues (`pnpm lint` now passes).
 - Documented coding standards in `agent.md` (enums for fields, arrow components, helper/hooks extraction) and refactored canvas/text components accordingly.

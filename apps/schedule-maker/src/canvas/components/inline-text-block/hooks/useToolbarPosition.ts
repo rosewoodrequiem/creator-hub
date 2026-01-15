@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type RectLike = { top: number; left: number; width: number; height: number }
 
@@ -6,16 +6,21 @@ export const useToolbarPosition = (
   getRect: () => RectLike | null,
   isFocused: boolean,
 ) => {
+  const getRectRef = useRef(getRect)
   const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number } | null>(null)
 
+  useEffect(() => {
+    getRectRef.current = getRect
+  }, [getRect])
+
   const updateToolbarPosition = useCallback(() => {
-    const rect = getRect()
+    const rect = getRectRef.current()
     if (!rect) return
     setToolbarPos({
       top: rect.top - 24,
       left: rect.left + rect.width / 2,
     })
-  }, [getRect])
+  }, [])
 
   useEffect(() => {
     if (!isFocused) {

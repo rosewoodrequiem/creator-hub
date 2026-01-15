@@ -30,6 +30,8 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
   children,
 }) => {
   const { x, y, width, height, rotation, zIndex, locked, kind } = component
+  const frameRef = useRef<HTMLDivElement>(null)
+  const editing = isEditing(component, frameRef)
   const [isDragging, setIsDragging] = useState(false)
   const [draftPosition, setDraftPosition] = useState<{ x: number; y: number }>(
     () => ({ x, y }),
@@ -42,6 +44,7 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
   const rafPersistRef = useRef<number | null>(null)
   const lastPersistedRef = useRef<{ x: number; y: number }>({ x, y })
   const hasDraggedRef = useRef(false)
+  const suppressClickRef = useRef(false)
 
   useEffect(() => {
     if (isDragging) return
@@ -71,6 +74,7 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
 
   return (
     <div
+      ref={frameRef}
       className={clsx(
         'absolute rounded-xl transition ring-offset-2',
         selected ? 'ring-2 ring-pink-400' : 'ring-1 ring-transparent',
@@ -103,6 +107,8 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           holdReadyRef,
           holdTimerRef,
           hasDraggedRef,
+          suppressClickRef,
+          isEditing: editing,
         })
       }
       onPointerMove={(event) =>
@@ -122,6 +128,8 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           rafPersistRef,
           lastPersistedRef,
           hasDraggedRef,
+          suppressClickRef,
+          isEditing: editing,
         })
       }
       onPointerUp={(event) =>
@@ -141,6 +149,8 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           rafPersistRef,
           lastPersistedRef,
           hasDraggedRef,
+          suppressClickRef,
+          isEditing: editing,
         })
       }
       onPointerCancel={() =>
@@ -151,17 +161,25 @@ export const CanvasComponentFrame: FC<CanvasComponentFrameProps> = ({
           holdTimerRef,
           holdReadyRef,
           hasDraggedRef,
+          suppressClickRef,
           currentPosition: { x, y },
         })
       }
+      onClick={(event) => {
+        if (suppressClickRef.current) {
+          event.preventDefault()
+          suppressClickRef.current = false
+          return
+        }
+        if (component.kind !== 'text') {
+          event.stopPropagation()
+          onSelect?.()
+        }
+      }}
     >
       <div
         className="h-full w-full"
         style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
-        onClick={(event) => {
-          event.stopPropagation()
-          onSelect?.()
-        }}
       >
         {children}
       </div>
@@ -178,7 +196,6 @@ function handlePointerDown(
     canvasWidth,
     canvasHeight,
     locked,
-    onSelect,
     setIsDragging,
     setDraftPosition,
     currentPosition,
@@ -192,7 +209,6 @@ function handlePointerDown(
   if (locked) return
   if (component.visible === false || component.id == null) return
 
-  onSelect?.()
   event.stopPropagation()
 
   const point = toCanvasPoint(event, canvasWidth, canvasHeight)
@@ -223,6 +239,7 @@ function handlePointerMove(
     rafPersistRef: MutableRefObject<number | null>
     lastPersistedRef: MutableRefObject<{ x: number; y: number }>
     hasDraggedRef: MutableRefObject<boolean>
+    isEditing: boolean
   },
 ) {
   const {
@@ -240,8 +257,10 @@ function handlePointerMove(
     rafPersistRef,
     lastPersistedRef,
     hasDraggedRef,
+    isEditing,
   } = params
   if (locked) return
+  if (isEditing) return
   if (pointerIdRef.current !== event.pointerId) return
   if (component.id == null) return
 
@@ -249,8 +268,7 @@ function handlePointerMove(
   if (!point) return
 
   const origin = dragStartRef.current ?? currentPosition
-  const distance =
-    Math.abs(point.x - origin.x) + Math.abs(point.y - origin.y)
+  const distance = Math.abs(point.x - origin.x) + Math.abs(point.y - origin.y)
 
   const readyToDrag = holdReadyRef.current || distance > 6
   if (!readyToDrag) return
@@ -289,6 +307,7 @@ function handlePointerUp(
     rafPersistRef: MutableRefObject<number | null>
     lastPersistedRef: MutableRefObject<{ x: number; y: number }>
     hasDraggedRef: MutableRefObject<boolean>
+    isEditing: boolean
   },
 ) {
   const {
@@ -305,8 +324,11 @@ function handlePointerUp(
     rafPersistRef,
     lastPersistedRef,
     hasDraggedRef,
+    suppressClickRef,
+    isEditing,
   } = params
   if (locked) return
+  if (isEditing) return
   if (pointerIdRef.current !== event.pointerId) return
   if (component.id == null) return
 
@@ -335,10 +357,14 @@ function handlePointerUp(
     holdTimerRef,
     holdReadyRef,
     hasDraggedRef,
+    suppressClickRef,
     currentPosition: next,
   })
 
   if (!didDrag) return
+
+  // Prevent the subsequent click from focusing text after a drag.
+  suppressClickRef.current = true
   if (
     next.x !== lastPersistedRef.current.x ||
     next.y !== lastPersistedRef.current.y
@@ -401,6 +427,7 @@ function resetDragState({
   holdTimerRef,
   holdReadyRef,
   hasDraggedRef,
+  suppressClickRef,
   currentPosition,
 }: {
   setIsDragging: (value: boolean) => void
@@ -409,6 +436,7 @@ function resetDragState({
   holdTimerRef: MutableRefObject<number | null>
   holdReadyRef: MutableRefObject<boolean>
   hasDraggedRef: MutableRefObject<boolean>
+  suppressClickRef: MutableRefObject<boolean>
   currentPosition: { x: number; y: number }
 }) {
   setIsDragging(false)
@@ -422,6 +450,7 @@ function resetDragState({
   }
   holdReadyRef.current = true
   hasDraggedRef.current = false
+  suppressClickRef.current = false
 }
 
 type PointerHandlerParams = {
@@ -439,4 +468,16 @@ type PointerHandlerParams = {
   holdReadyRef: MutableRefObject<boolean>
   holdTimerRef: MutableRefObject<number | null>
   hasDraggedRef: MutableRefObject<boolean>
+  suppressClickRef: MutableRefObject<boolean>
+  isEditing: boolean
+}
+
+function isEditing(
+  component: ScheduleComponent,
+  frameRef: MutableRefObject<HTMLDivElement | null>,
+) {
+  if (component.kind !== 'text') return false
+  const active = document.activeElement
+  if (!active || !frameRef.current) return false
+  return frameRef.current.contains(active)
 }
