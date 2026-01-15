@@ -22,6 +22,7 @@ import {
   SnapshotRow,
   Theme,
   getDefaultComponentProps,
+  ComponentField,
 } from './SheduleMakerDB.types'
 import { seed } from './seed'
 
@@ -354,6 +355,75 @@ export class ScheduleMakerDB extends Dexie implements DB {
     }
 
     this.requestSnapshotCapture('component-props')
+  }
+
+  async updateComponentLayout(
+    componentId: number,
+    patch: Partial<Pick<ScheduleComponent, ComponentField>>,
+  ) {
+    const component = await this.components.get(componentId)
+    if (!component) {
+      throw new Error(`Component ${componentId} not found`)
+    }
+
+    const now = Date.now()
+    await this.components.update(componentId, {
+      ...patch,
+      updatedAt: now,
+    })
+    this.requestSnapshotCapture('component-layout')
+  }
+
+  async reorderComponentZIndex(
+    componentId: number,
+    direction: 'front' | 'back' | 'forward' | 'backward',
+  ) {
+    const scheduleId = await this.ensureCurrentScheduleId()
+    if (!scheduleId) return
+
+    const components = await this.components.where({ scheduleId }).toArray()
+    const sorted = components.sort((a, b) => {
+      const zDiff = (a.zIndex ?? 0) - (b.zIndex ?? 0)
+      if (zDiff !== 0) return zDiff
+      return (a.id ?? 0) - (b.id ?? 0)
+    })
+
+    const index = sorted.findIndex((item) => item.id === componentId)
+    if (index < 0) return
+
+    let targetIndex: number | null = null
+
+    switch (direction) {
+      case 'front':
+        targetIndex = sorted.length - 1
+        break
+      case 'back':
+        targetIndex = 0
+        break
+      case 'forward':
+        if (index < sorted.length - 1) targetIndex = index + 1
+        break
+      case 'backward':
+        if (index > 0) targetIndex = index - 1
+        break
+      default:
+        break
+    }
+
+    if (targetIndex == null || targetIndex === index) return
+
+    const [item] = sorted.splice(index, 1)
+    sorted.splice(targetIndex, 0, item)
+
+    const now = Date.now()
+    const updated = sorted.map((component, idx) => ({
+      ...component,
+      zIndex: idx + 1,
+      updatedAt: now,
+    }))
+
+    await this.components.bulkPut(updated)
+    this.requestSnapshotCapture('component-zindex')
   }
 
   async updateScheduleDay(day: Day, patch: Partial<ScheduleDay>) {

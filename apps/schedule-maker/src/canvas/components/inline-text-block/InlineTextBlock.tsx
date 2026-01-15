@@ -1,5 +1,6 @@
 import {
   JSX,
+  type FC,
   type ReactNode,
   useCallback,
   useEffect,
@@ -10,7 +11,6 @@ import {
 import { createPortal } from 'react-dom'
 import {
   type Descendant,
-  Node,
   Range,
   Element as SlateElement,
   Text,
@@ -28,8 +28,15 @@ import type {
 } from '../../../store/schedule-maker-db/SheduleMakerDB.types'
 import { useCanvasStore } from '../../state/useCanvasStore'
 import { resolveThemeColor, resolveThemeFont } from '../../theme/themeUtils'
+import {
+  cloneDescendants,
+  fromPlainText,
+  serializeRichText,
+  toPlainText,
+} from './InlineTextBlock.helpers'
 import { InlineLeaf, InlineLeafStyle } from './InlineTextBlock.types'
 import { Leaf, LeafComponentProps } from './Leaf'
+import { useToolbarPosition } from './hooks/useToolbarPosition'
 
 const STYLE_PRESETS = [
   {
@@ -64,12 +71,15 @@ const STYLE_PRESETS = [
 
 const FONT_SIZES = [12, 16, 20, 24, 32, 48, 64]
 
-type InlineTextBlockProps = {
+interface InlineTextBlockProps {
   component: ScheduleComponentWithProps<'text'>
   theme: Theme
 }
 
-export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
+export const InlineTextBlock: FC<InlineTextBlockProps> = ({
+  component,
+  theme,
+}) => {
   const selectedComponentId = useCanvasStore(
     (state) => state.selectedComponentId,
   )
@@ -118,10 +128,10 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   const lastSyncedTextRef = useRef(component.props.text ?? '')
   const lastSyncedRichRef = useRef(serializeRichText(component.props.richText))
   const pendingSyncRef = useRef(false)
-  const [toolbarPos, setToolbarPos] = useState<{
-    top: number
-    left: number
-  } | null>(null)
+  const { toolbarPos, updateToolbarPosition } = useToolbarPosition(
+    () => wrapperRef.current?.getBoundingClientRect() ?? null,
+    isFocused,
+  )
 
   const persistDraft = useCallback(async () => {
     if (!component.id || !dirty) return
@@ -512,29 +522,6 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
       selectionSummary.colorTokens[0] ?? styleState.colorToken,
     ) || currentColor
 
-  const updateToolbarPosition = useCallback(() => {
-    if (!wrapperRef.current) return
-    const rect = wrapperRef.current.getBoundingClientRect()
-    setToolbarPos({
-      top: rect.top - 24,
-      left: rect.left + rect.width / 2,
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!isFocused) {
-      setToolbarPos(null)
-      return
-    }
-    updateToolbarPosition()
-    window.addEventListener('resize', updateToolbarPosition)
-    window.addEventListener('scroll', updateToolbarPosition, true)
-    return () => {
-      window.removeEventListener('resize', updateToolbarPosition)
-      window.removeEventListener('scroll', updateToolbarPosition, true)
-    }
-  }, [isFocused, updateToolbarPosition])
-
   useEffect(() => {
     if (isFocused) {
       syncToolbarStyle()
@@ -687,7 +674,7 @@ export function InlineTextBlock({ component, theme }: InlineTextBlockProps) {
   if (!isSelected) {
     return (
       <div
-        className="flex h-full w-full cursor-text select-none items-center"
+        className="flex h-full w-full cursor-inherit select-none items-center"
         style={{
           fontFamily,
           fontSize: styleState.fontSize,
@@ -878,26 +865,4 @@ function RichNode({
   }
 
   return null
-}
-
-function fromPlainText(text?: string): Descendant[] {
-  const safe = typeof text === 'string' ? text : ''
-  return [
-    {
-      type: 'paragraph',
-      children: [{ text: safe }],
-    } as Descendant,
-  ]
-}
-
-function toPlainText(value: Descendant[]) {
-  return value.map((node) => Node.string(node)).join('\n')
-}
-
-function cloneDescendants(value: Descendant[]): Descendant[] {
-  return JSON.parse(JSON.stringify(value)) as Descendant[]
-}
-
-function serializeRichText(value?: Descendant[] | null) {
-  return JSON.stringify(value ?? null)
 }

@@ -1,5 +1,5 @@
 import { Button, FloatingPanel } from '@creator-hub/ui-kit'
-import type { ReactElement } from 'react'
+import type { FC, ReactElement } from 'react'
 
 import type {
   ScheduleComponentWithProps,
@@ -10,13 +10,17 @@ import { useCanvasStore } from '../state/useCanvasStore'
 import { DayCardComponentEditor } from './DayCardComponentEditor'
 import { ImageComponentEditor } from './ImageComponentEditor'
 
-type Props = {
+interface ComponentEditorHostProps {
   component: ScheduleComponentWithProps
   theme: Theme
   snapshot: ScheduleSnapshot
 }
 
-export function ComponentEditorHost({ component, theme, snapshot }: Props) {
+export const ComponentEditorHost: FC<ComponentEditorHostProps> = ({
+  component,
+  theme,
+  snapshot,
+}) => {
   const deselect = useCanvasStore((state) => state.deselect)
 
   let content: ReactElement | null = null
@@ -53,7 +57,7 @@ export function ComponentEditorHost({ component, theme, snapshot }: Props) {
         </Button>
       }
     >
-      {content ? <>content</> : null}
+      {content}
     </FloatingPanel>
   )
 }

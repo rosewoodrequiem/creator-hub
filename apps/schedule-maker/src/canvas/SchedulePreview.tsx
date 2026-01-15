@@ -61,6 +61,8 @@ export default function SchedulePreview() {
               component={component}
               selected={component.id === selectedComponentId}
               onSelect={() => selectComponent(component.id!)}
+              canvasWidth={CANVAS_WIDTH}
+              canvasHeight={CANVAS_HEIGHT}
             >
               {renderer({ component, theme, schedule, snapshot })}
             </CanvasComponentFrame>

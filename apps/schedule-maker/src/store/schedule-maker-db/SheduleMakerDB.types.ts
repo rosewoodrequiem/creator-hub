@@ -118,6 +118,24 @@ export type ComponentPropsMap = {
   'day-card': DayCardComponentProps
 }
 
+export enum ComponentField {
+  X = 'x',
+  Y = 'y',
+  WIDTH = 'width',
+  HEIGHT = 'height',
+  ROTATION = 'rotation',
+  Z_INDEX = 'zIndex',
+}
+
+export const COMPONENT_LAYOUT_FIELDS: ComponentField[] = [
+  ComponentField.X,
+  ComponentField.Y,
+  ComponentField.WIDTH,
+  ComponentField.HEIGHT,
+  ComponentField.ROTATION,
+  ComponentField.Z_INDEX,
+]
+
 export type ScheduleComponent<K extends ComponentKind = ComponentKind> =
   BaseComponent & {
     kind: K
