@@ -5,7 +5,10 @@
 - Add new todos or checkpoints as soon as they arise so the log stays current.
 
 ## Todos
-- [ ] Add initial tasks here
+- [ ] Add grid snapping for component moves
+- [ ] Provide a toggle to disable grid snapping
+- [ ] Show proximity guides for alignment while moving components
+- [ ] Move layer up/down controls into the minibar or a higher-level toolbar
 
 ## Log
 - Added a root lint script and explicit Nx lint target for schedule-maker so linting runs via `pnpm lint` (Nx CLI currently timing out locally).
