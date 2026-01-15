@@ -13,3 +13,8 @@
 
 ## How to keep context updated
 - Log new background/decisions here (e.g., feature scope, architectural choices, templates/themes). Keep `progress.md` in sync with active todos and status.
+
+## Layering plan
+- Components are treated as layers; z-index reflects relative layer order rather than absolute numbers.
+- Layers should be viewable and reorderable in a panel (Photoshop-style), supporting move above/below and send to front/back.
+- Consider representing ordering with a doubly linked structure or equivalent ordering metadata so index changes map to layer moves.

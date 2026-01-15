@@ -9,6 +9,10 @@
 - [ ] Provide a toggle to disable grid snapping
 - [ ] Show proximity guides for alignment while moving components
 - [ ] Move layer up/down controls into the minibar or a higher-level toolbar
+- [ ] Treat each canvas component as a layer with consistent ordering metadata
+- [ ] Add a layer panel to list all components and allow reorder similar to Photoshop
+- [ ] Make index controls adjust relative layer position (move above/below, send to front/back)
+- [ ] Choose/implement a doubly linked or equivalent structure to persist and mutate layer ordering
 
 ## Log
 - Added a root lint script and explicit Nx lint target for schedule-maker so linting runs via `pnpm lint` (Nx CLI currently timing out locally).
